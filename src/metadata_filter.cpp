@@ -74,24 +74,51 @@ bool evaluate(const Metadata& metadata, const Filter& filter) {
 
 Filter parseFilter(const json& j) {
     Filter f;
-    f.op = parseOperator(j.at("op").get<std::string>());
+    if (!j.contains("op")) {
+        throw invalid_argument("Missing required key: 'op'");
+    }
+
+    try{
+        f.op = parseOperator(j.at("op").get<string>());
+    } catch (const std::invalid_argument& e) {
+        throw invalid_argument("Invalid operator: " + j.at("op").get<string>());
+    } catch (const json::exception& e) {
+        throw invalid_argument("JSON parsing error: " + string(e.what()));
+    }
+
     if (f.op == Operator::AND || f.op == Operator::OR) {
+        if (!j.contains("children") || !j["children"].is_array()) {
+            throw std::invalid_argument("'children' must be an array for logical operators");
+        }
         for (const auto& child : j.at("children")) {
             f.children.push_back(parseFilter(child));
         }
     } else if (f.op == Operator::IN) {
-        f.field = j.at("field").get<std::string>();
+        if (!j.contains("field") || !j.contains("values")) {
+            throw invalid_argument("Missing 'field' or 'values' for IN operator");
+        }
+        f.field = j.at("field").get<string>();
+
+        if (!j["values"].is_array()) {
+            throw invalid_argument("'values' must be an array for IN operator");
+        }
+
         for (const auto& v : j.at("values")) {
             if (v.is_number_integer()) f.values.push_back(v.get<int>());
             else if (v.is_number_float()) f.values.push_back(v.get<float>());
-            else if (v.is_string()) f.values.push_back(v.get<std::string>());
+            else if (v.is_string()) f.values.push_back(v.get<string>());
+            else throw invalid_argument("Invalid value type in 'values' array");
         }
     } else {
-        f.field = j.at("field").get<std::string>();
+        if (!j.contains("field") || !j.contains("value")) {
+            throw invalid_argument("Missing 'field' or 'value' for comparison operator");
+        }
+        f.field = j.at("field").get<string>();
         const auto& val = j.at("value");
         if (val.is_number_integer()) f.value = val.get<int>();
         else if (val.is_number_float()) f.value = val.get<float>();
-        else if (val.is_string()) f.value = val.get<std::string>();
+        else if (val.is_string()) f.value = val.get<string>();
+        else throw invalid_argument("Invalid 'value' type");
     }
 
     return f;

@@ -1,15 +1,13 @@
 #include "search_engine.hpp"
 #include "metadata.hpp"
 #include "metadata_filter.hpp"
+#include "json.hpp"
 #include <queue>
 #include <algorithm>
+#include <iostream>
 // namespace
-using std::vector;
-using std::pair;
-using std::min;
-using std::partial_sort;
-using std::unordered_map;
-using std::string;
+using namespace std;
+using json = nlohmann::json;
 
 // Flat search engine implementation
 FlatSearchEngine::FlatSearchEngine(const VectorStore& store, const SimilarityMetric& metric)
@@ -25,7 +23,14 @@ vector<pair<float, Document>> FlatSearchEngine::search(const vector<float>& quer
             results.emplace_back(score, doc);
         }
     } else {
-        Filter parsedFilter = parseFilter(filter);
+        Filter parsedFilter;
+        try {
+            parsedFilter = parseFilter(filter);
+        } catch (const invalid_argument& e) {
+            cerr << "Invalid filter: " << e.what() << endl;
+            return results; // Return empty results on invalid filter
+        }
+
         for (const auto& doc : documents) {
             // Apply filter if provided
             if (!evaluate(doc.metadata, parsedFilter)) continue;
