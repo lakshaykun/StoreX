@@ -1,6 +1,8 @@
 #pragma once
 #include "vector_store.hpp"
 #include "similarity.hpp"
+#include "metadata.hpp"
+#include "metadata_filter.hpp"
 #include <vector>
 #include <utility>
 
@@ -20,12 +22,12 @@ public:
         store(store), metric(metric) {}
 
     // Returns top-K results as {score, vector}
-    virtual vector<pair<float, Document>> search(const vector<float>& query, size_t k = 5, unordered_map<string, variant<string, int>> filter = {}) const = 0;
+    virtual vector<pair<float, Document>> search(const vector<float>& query, size_t k = 5, json filter = json{}) const = 0;
 };
 
 class FlatSearchEngine : public SearchEngine {
 public:
     FlatSearchEngine(const VectorStore& store, const SimilarityMetric& metric);
 
-    vector<pair<float, Document>> search(const vector<float>& query, size_t k = 5, unordered_map<string, variant<string, int>> filter = {}) const override;
+    vector<pair<float, Document>> search(const vector<float>& query, size_t k = 5, json filter = json{}) const override;
 };

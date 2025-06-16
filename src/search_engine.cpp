@@ -1,4 +1,6 @@
 #include "search_engine.hpp"
+#include "metadata.hpp"
+#include "metadata_filter.hpp"
 #include <queue>
 #include <algorithm>
 // namespace
@@ -9,29 +11,28 @@ using std::partial_sort;
 using std::unordered_map;
 using std::string;
 
+// Flat search engine implementation
 FlatSearchEngine::FlatSearchEngine(const VectorStore& store, const SimilarityMetric& metric)
     : SearchEngine(store, metric) {}
 
-vector<pair<float, Document>> FlatSearchEngine::search(const vector<float>& query, size_t k, unordered_map<string, variant<string, int>> filter) const {
+vector<pair<float, Document>> FlatSearchEngine::search(const vector<float>& query, size_t k, json filter) const {
     vector<pair<float, Document>> results;
     const auto& documents = store.getAll();
-
-    for (const auto& doc : documents) {
-        // Apply filter if provided
-        if (!filter.empty()) {
-            bool matches = true;
-            for (const auto& [key, value] : filter) {
-                auto it = doc.metadata.find(key);
-                if (it == doc.metadata.end() || it->second != value) {
-                    matches = false;
-                    break;
-                }
-            }
-            if (!matches) continue;
+    
+    if (filter.empty()){
+        for (const auto& doc : documents) {
+            float score = metric.compute(query, doc.embedding);
+            results.emplace_back(score, doc);
         }
+    } else {
+        Filter parsedFilter = parseFilter(filter);
+        for (const auto& doc : documents) {
+            // Apply filter if provided
+            if (!evaluate(doc.metadata, parsedFilter)) continue;
 
-        float score = metric.compute(query, doc.embedding);
-        results.emplace_back(score, doc);
+            float score = metric.compute(query, doc.embedding);
+            results.emplace_back(score, doc);
+        }
     }
 
     // Sort results by score in descending order

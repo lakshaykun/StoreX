@@ -3,13 +3,13 @@
 #include <string>
 #include <unordered_map>
 #include <variant>
+#include "metadata.hpp" 
 using namespace std;
 
 struct Document {
     vector<float> embedding;
-    unordered_map<string, variant<string, int>> metadata;
+    Metadata metadata;
 
-    Document(const vector<float>& embedding = {},
-           const unordered_map<string, variant<string, int>>& metadata = {})
+    Document(const vector<float>& embedding = {}, const Metadata& metadata = {})
         : embedding(embedding), metadata(metadata) {}
 };
