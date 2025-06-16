@@ -5,11 +5,11 @@
 #include <variant>
 using namespace std;
 
-struct Vector {
-    vector<float> values;
+struct Document {
+    vector<float> embedding;
     unordered_map<string, variant<string, int>> metadata;
 
-    Vector(const vector<float>& values,
+    Document(const vector<float>& embedding = {},
            const unordered_map<string, variant<string, int>>& metadata = {})
-        : values(values), metadata(metadata) {}
+        : embedding(embedding), metadata(metadata) {}
 };

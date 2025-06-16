@@ -1,4 +1,4 @@
-#include "include/similarity.hpp"
+#include "similarity.hpp"
 #include <cmath>
 #include <stdexcept>
 // namespace

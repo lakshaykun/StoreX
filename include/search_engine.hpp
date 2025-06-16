@@ -11,13 +11,21 @@ using std::unordered_map;
 using std::string;
 
 class SearchEngine {
-private:
+protected:
     const VectorStore& store;
     const SimilarityMetric& metric;
 
 public:
-    SearchEngine(const VectorStore& store, const SimilarityMetric& metric);
+    SearchEngine(const VectorStore& store, const SimilarityMetric& metric):
+        store(store), metric(metric) {}
 
     // Returns top-K results as {score, vector}
-    vector<pair<float, Vector>> search(const vector<float>& query, size_t k = 5) const;
+    virtual vector<pair<float, Document>> search(const vector<float>& query, size_t k = 5, unordered_map<string, variant<string, int>> filter = {}) const = 0;
+};
+
+class FlatSearchEngine : public SearchEngine {
+public:
+    FlatSearchEngine(const VectorStore& store, const SimilarityMetric& metric);
+
+    vector<pair<float, Document>> search(const vector<float>& query, size_t k = 5, unordered_map<string, variant<string, int>> filter = {}) const override;
 };

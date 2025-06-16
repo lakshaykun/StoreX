@@ -20,7 +20,12 @@ Ask: “What is this system supposed to do really well?”
         In-memory only
 
     Phase 2: Upgrade with ANN Indexing
-        Use or build a real indexing algorithm (HNSW or IVF):
+        Methods to include:
+            HNSW (Hierarchical Navigable Small World) graphs
+            IVF (Inverted File Index)
+            ANNOY (Approximate Nearest Neighbors Oh Yeah)
+            LSH (Locality Sensitive Hashing)
+        Why? Because brute-force search is too slow for large datasets.
         10x+ faster than brute-force
         Keeps you competitive with tools like FAISS/Pinecone
 

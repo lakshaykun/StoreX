@@ -1,13 +1,13 @@
 #pragma once
-#include "vector.hpp"
+#include "document.hpp"
 #include <vector>
 using namespace std;
 
 class VectorStore {
 private:
-    vector<Vector> vectors;
+    vector<Document> Documents;
 
 public:
-    void insert(const Vector& v);
-    const vector<Vector>& getAll() const;
+    void insert(const Document& v);
+    const vector<Document>& getAll() const;
 };
