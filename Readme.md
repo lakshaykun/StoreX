@@ -22,7 +22,6 @@ Ask: “What is this system supposed to do really well?”
     Phase 2: Upgrade with ANN Indexing
         Methods to include:
             HNSW (Hierarchical Navigable Small World) graphs
-            IVF (Inverted File Index)
             ANNOY (Approximate Nearest Neighbors Oh Yeah)
             LSH (Locality Sensitive Hashing)
         Why? Because brute-force search is too slow for large datasets.
@@ -33,18 +32,5 @@ Ask: “What is this system supposed to do really well?”
         Now make your system practical:
             Save/load to/from disk
             Expose API to Python (using pybind11)
-            Start writing CLI or REST interface
-
-
-## What to Learn / Polish
-       Area	                                   Why	                                      Resource
-C++ STL & Memory Mgmt	           Core of performance & containers	      cppreference.com, or Book: Effective C++
-Vector Similarity Metrics	       Cosine, L2, Dot Product	              Paper/blogs on embedding spaces
-ANN Algorithms (HNSW)	           Key to performance	                  HNSW Paper, hnswlib
-File I/O & Serialization	       For persistence	                      Learn binary I/O, or use protobuf / msgpack
-Multithreading in C++	           For fast concurrent searches	          std::thread / OpenMP
-Python Bindings	                   To integrate with AI workflows         pybind11
-LangChain plugin basics		       To serve it in AI chains               LangChain docs
-
 
 

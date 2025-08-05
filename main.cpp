@@ -23,11 +23,14 @@ void printMetadata(const Metadata& metadata) {
 }
 
 int main() {
-    VectorStore store;
+    // Create VectorStore with storage functionality
+    VectorStore store("documents.jsonl", true);  // Enable auto-save
     DotProductSimilarity similarity;
     FlatSearchEngine engine(store, similarity);
 
-    // Insert sample vectors
+    cout << "Loaded " << store.size() << " documents from storage\n";
+
+    // Insert sample vectors (will be auto-saved)
     store.insert(Document({1.0f, 0.0f}, {{"id", 1}, {"type", string("A")}}));
     store.insert(Document({0.5f, 1.0f}, {{"id", 2}, {"type", string("B")}}));
     store.insert(Document({1.0f, 1.0f}, {{"id", 3}, {"type", string("C")}}));
@@ -35,6 +38,8 @@ int main() {
     store.insert(Document({0.5f, 0.8f}, {{"id", 5}, {"type", string("A")}}));
     store.insert(Document({1.6f, 0.3f}, {{"id", 6}, {"class", 5}, {"type", string("A")}}));
     store.insert(Document({0.5f, 0.8f}, {{"id", 7}, {"class", 4}}));
+
+    cout << "Total documents in store: " << store.size() << "\n";
 
     // Query vector
     vector<float> query = {1.0f, 1.0f};

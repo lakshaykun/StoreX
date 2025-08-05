@@ -4,7 +4,6 @@
 #include "vector_store.hpp"
 #include "metadata_filter.hpp"
 #include "storage.hpp"
-#include "index.hpp"
 #include <iostream>
 #include <vector>
 #include <cassert>
@@ -321,6 +320,194 @@ public:
         remove(test_file.c_str());
     }
     
+    void test_vector_store_storage_integration() {
+        cout << "\n=== Testing VectorStore Storage Integration ===" << endl;
+        
+        const string test_file = "test_vector_store.jsonl";
+        
+        // Test 1: Memory-only VectorStore
+        {
+            VectorStore memory_store;
+            assert_test(!memory_store.hasStorage(), "Memory-only store has no storage");
+            assert_test(memory_store.size() == 0, "Memory-only store starts empty");
+            
+            Document doc({1.0f, 2.0f}, {{"id", 1}});
+            memory_store.insert(doc);
+            assert_test(memory_store.size() == 1, "Memory-only store insert");
+        }
+        
+        // Test 2: VectorStore with storage but auto-save disabled
+        {
+            VectorStore manual_store(test_file, false);
+            assert_test(manual_store.hasStorage(), "Storage-enabled store has storage");
+            assert_test(manual_store.size() == 0, "Storage-enabled store starts empty");
+            
+            Document doc1({1.0f, 2.0f}, {{"id", 1}, {"name", string("test1")}});
+            Document doc2({3.0f, 4.0f}, {{"id", 2}, {"name", string("test2")}});
+            
+            manual_store.insert(doc1);
+            manual_store.insert(doc2);
+            assert_test(manual_store.size() == 2, "Manual store insert");
+            
+            // Save manually
+            bool save_success = manual_store.save();
+            assert_test(save_success, "Manual save success");
+        }
+        
+        // Test 3: Load from existing storage
+        {
+            VectorStore load_store(test_file, false);
+            assert_test(load_store.size() == 2, "Load from existing storage");
+            
+            const auto& docs = load_store.getAll();
+            if (docs.size() >= 2) {
+                assert_test(docs[0].embedding.size() == 2, "Loaded document embedding size");
+                assert_test(docs[0].embedding[0] == 1.0f, "Loaded document embedding value");
+                assert_test(std::get<int>(docs[0].metadata.at("id")) == 1, "Loaded document metadata");
+            }
+        }
+        
+        // Test 4: VectorStore with auto-save enabled
+        {
+            VectorStore auto_store(test_file + "_auto", true);
+            Document doc({5.0f, 6.0f}, {{"id", 3}});
+            auto_store.insert(doc);
+            
+            // Check that file was created automatically
+            ifstream file(test_file + "_auto");
+            assert_test(file.good(), "Auto-save file creation");
+            file.close();
+        }
+        
+        // Test 5: Batch insert
+        {
+            VectorStore batch_store(test_file + "_batch", true);
+            vector<Document> batch = {
+                Document({7.0f, 8.0f}, {{"id", 4}}),
+                Document({9.0f, 10.0f}, {{"id", 5}}),
+                Document({11.0f, 12.0f}, {{"id", 6}})
+            };
+            
+            batch_store.insert(batch);
+            assert_test(batch_store.size() == 3, "Batch insert size");
+            
+            // Verify persistence
+            VectorStore verify_store(test_file + "_batch", false);
+            assert_test(verify_store.size() == 3, "Batch insert persistence");
+        }
+        
+        // Test 6: Clear functionality
+        {
+            VectorStore clear_store(test_file + "_clear", true);
+            clear_store.insert(Document({1.0f, 1.0f}, {{"id", 7}}));
+            assert_test(clear_store.size() == 1, "Before clear");
+            
+            bool clear_success = clear_store.clear();
+            assert_test(clear_success, "Clear operation success");
+            assert_test(clear_store.size() == 0, "After clear - memory");
+            
+            // Verify storage is also cleared
+            VectorStore verify_clear(test_file + "_clear", false);
+            assert_test(verify_clear.size() == 0, "After clear - storage");
+        }
+        
+        // Test 7: Error handling - invalid storage path
+        {
+            // Try to create storage in non-existent directory
+            VectorStore error_store("/invalid/path/test.jsonl", false);
+            assert_test(error_store.hasStorage(), "Invalid path store has storage object");
+            
+            Document doc({1.0f, 1.0f}, {{"id", 8}});
+            error_store.insert(doc);
+            
+            // Save should fail gracefully
+            bool save_result = error_store.save();
+            assert_test(!save_result, "Save to invalid path fails gracefully");
+        }
+        
+        // Cleanup test files
+        remove(test_file.c_str());
+        remove((test_file + "_auto").c_str());
+        remove((test_file + "_batch").c_str());
+        remove((test_file + "_clear").c_str());
+    }
+    
+    void test_storage_edge_cases() {
+        cout << "\n=== Testing Storage Edge Cases ===" << endl;
+        
+        const string test_file = "test_edge_cases.jsonl";
+        
+        // Test 1: Empty embeddings
+        {
+            Storage storage(test_file);
+            Document empty_doc({}, {{"id", 1}, {"empty", true}});
+            
+            bool save_success = storage.save_document(empty_doc);
+            assert_test(save_success, "Save document with empty embedding");
+            
+            auto loaded = storage.load_documents();
+            assert_test(loaded.size() == 1, "Load document with empty embedding");
+            assert_test(loaded[0].embedding.empty(), "Empty embedding preserved");
+        }
+        
+        // Test 2: Complex metadata types
+        {
+            Storage storage(test_file + "_complex");
+            Document complex_doc({1.0f, 2.0f}, {
+                {"string_val", string("test_string")},
+                {"int_val", 42},
+                {"float_val", 3.14f}
+            });
+            
+            bool save_success = storage.save_document(complex_doc);
+            assert_test(save_success, "Save document with complex metadata");
+            
+            auto loaded = storage.load_documents();
+            if (!loaded.empty()) {
+                assert_test(std::get<string>(loaded[0].metadata.at("string_val")) == "test_string", "String metadata preserved");
+                assert_test(std::get<int>(loaded[0].metadata.at("int_val")) == 42, "Int metadata preserved");
+                assert_near(std::get<float>(loaded[0].metadata.at("float_val")), 3.14f, 0.001f, "Float metadata preserved");
+            }
+        }
+        
+        // Test 3: Large embeddings
+        {
+            Storage storage(test_file + "_large");
+            vector<float> large_embedding(1000, 1.5f);  // 1000-dimensional vector
+            Document large_doc(large_embedding, {{"id", 999}, {"size", 1000}});
+            
+            bool save_success = storage.save_document(large_doc);
+            assert_test(save_success, "Save document with large embedding");
+            
+            auto loaded = storage.load_documents();
+            if (!loaded.empty()) {
+                assert_test(loaded[0].embedding.size() == 1000, "Large embedding size preserved");
+                assert_test(loaded[0].embedding[0] == 1.5f, "Large embedding values preserved");
+            }
+        }
+        
+        // Test 4: File operations
+        {
+            Storage storage(test_file + "_ops");
+            assert_test(!storage.file_exists(), "Non-existent file check");
+            assert_test(storage.document_count() == 0, "Empty file document count");
+            
+            storage.save_document(Document({1.0f}, {{"id", 1}}));
+            assert_test(storage.file_exists(), "File exists after save");
+            assert_test(storage.document_count() == 1, "Document count after save");
+            
+            bool clear_success = storage.clear_storage();
+            assert_test(clear_success, "Clear storage success");
+            assert_test(storage.document_count() == 0, "Document count after clear");
+        }
+        
+        // Cleanup
+        remove(test_file.c_str());
+        remove((test_file + "_complex").c_str());
+        remove((test_file + "_large").c_str());
+        remove((test_file + "_ops").c_str());
+    }
+    
     void test_index_operations() {
         cout << "\n=== Testing Index Operations (Skipped) ===" << endl;
         cout << "Note: Index class appears to be an abstract interface." << endl;
@@ -417,6 +604,8 @@ public:
         test_hnsw_search_engine();
         test_annoy_search_engine();
         test_storage_operations();
+        test_vector_store_storage_integration();
+        test_storage_edge_cases();
         test_index_operations();
         test_performance_comparison();
         
