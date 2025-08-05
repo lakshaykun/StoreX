@@ -76,3 +76,71 @@ public:
     
     vector<pair<float, Document>> search(const vector<float>& query, size_t k = 5, json filter = json{}) const override;
 };
+
+class HNSWSearchEngine : public SearchEngine {
+private:
+    struct HNSWNode {
+        size_t doc_idx;
+        vector<float> embedding;
+        vector<vector<size_t>> connections; // connections[layer] = list of neighbor indices
+        
+        HNSWNode(size_t idx, const vector<float>& vec) : doc_idx(idx), embedding(vec) {}
+    };
+    
+    vector<HNSWNode> nodes;
+    vector<size_t> entry_points; // entry point for each layer
+    size_t max_layers;
+    size_t max_connections_per_layer;
+    size_t ef_construction; // size of dynamic candidate list during construction
+    size_t ef_search; // size of dynamic candidate list during search
+    double level_multiplier;
+    
+    // Helper methods
+    size_t getRandomLevel() const;
+    vector<size_t> searchLayer(const vector<float>& query, const vector<size_t>& entry_points, 
+                              size_t num_closest, size_t layer) const;
+    void selectNeighbors(vector<pair<float, size_t>>& candidates, size_t max_connections) const;
+    float computeDistance(const vector<float>& a, const vector<float>& b) const;
+    void insertNode(size_t node_idx, size_t target_layer);
+    
+public:
+    HNSWSearchEngine(const VectorStore& store, const SimilarityMetric& metric,
+                    size_t max_connections = 16, size_t ef_construction = 200, size_t ef_search = 50);
+    
+    vector<pair<float, Document>> search(const vector<float>& query, size_t k = 5, json filter = json{}) const override;
+};
+
+class AnnoySearchEngine : public SearchEngine {
+private:
+    struct AnnoyNode {
+        vector<float> hyperplane;
+        float hyperplane_offset;
+        size_t left_child;
+        size_t right_child;
+        vector<size_t> document_indices; // For leaf nodes
+        bool is_leaf;
+        
+        AnnoyNode() : hyperplane_offset(0.0f), left_child(SIZE_MAX), right_child(SIZE_MAX), is_leaf(false) {}
+    };
+    
+    vector<AnnoyNode> nodes; // All nodes in a flat structure
+    vector<size_t> tree_roots; // Root node index for each tree
+    size_t num_trees;
+    size_t max_leaf_size;
+    size_t dimensions;
+    
+    // Helper methods
+    size_t buildTreeRecursive(const vector<size_t>& doc_indices, size_t depth = 0);
+    void searchTreeRecursive(size_t node_idx, const vector<float>& query, 
+                           vector<size_t>& candidates, size_t max_candidates) const;
+    vector<float> generateRandomHyperplane() const;
+    float computeDotProduct(const vector<float>& a, const vector<float>& b) const;
+    void splitByHyperplane(const vector<size_t>& doc_indices, const vector<float>& hyperplane,
+                          float offset, vector<size_t>& left, vector<size_t>& right) const;
+    
+public:
+    AnnoySearchEngine(const VectorStore& store, const SimilarityMetric& metric,
+                     size_t num_trees = 10, size_t max_leaf_size = 50);
+    
+    vector<pair<float, Document>> search(const vector<float>& query, size_t k = 5, json filter = json{}) const override;
+};

@@ -210,6 +210,82 @@ public:
         }
     }
     
+    void test_hnsw_search_engine() {
+        cout << "\n=== Testing HNSW Search Engine ===" << endl;
+        
+        VectorStore store;
+        store.insert(Document({1.0f, 0.0f}, {{"id", 1}, {"category", string("A")}}));
+        store.insert(Document({0.9f, 0.1f}, {{"id", 2}, {"category", string("A")}}));
+        store.insert(Document({0.0f, 1.0f}, {{"id", 3}, {"category", string("B")}}));
+        store.insert(Document({0.1f, 0.9f}, {{"id", 4}, {"category", string("B")}}));
+        
+        CosineSimilarity metric;
+        HNSWSearchEngine hnsw_engine(store, metric, 16, 100, 50);
+        FlatSearchEngine flat_engine(store, metric);
+        
+        // Test basic search
+        vector<float> query = {1.0f, 0.0f};
+        auto hnsw_results = hnsw_engine.search(query, 4);
+        auto flat_results = flat_engine.search(query, 4);
+        
+        assert_test(hnsw_results.size() <= 4, "HNSW search - result count constraint");
+        assert_test(!hnsw_results.empty(), "HNSW search - non-empty results");
+        
+        // Check that top result matches (HNSW should find the best match)
+        if (!hnsw_results.empty() && !flat_results.empty()) {
+            int hnsw_top = std::get<int>(hnsw_results[0].second.metadata.at("id"));
+            int flat_top = std::get<int>(flat_results[0].second.metadata.at("id"));
+            assert_test(hnsw_top == flat_top, "HNSW vs Flat - top result match");
+        }
+        
+        // Test filtered search
+        json filter = json{{"op", "EQ"}, {"field", "category"}, {"value", "A"}};
+        auto filtered_results = hnsw_engine.search(query, 10, filter);
+        
+        for (const auto& result : filtered_results) {
+            string category = std::get<string>(result.second.metadata.at("category"));
+            assert_test(category == "A", "HNSW search with filter - category match");
+        }
+    }
+    
+    void test_annoy_search_engine() {
+        cout << "\n=== Testing Annoy Search Engine ===" << endl;
+        
+        VectorStore store;
+        store.insert(Document({1.0f, 0.0f}, {{"id", 1}, {"category", string("A")}}));
+        store.insert(Document({0.9f, 0.1f}, {{"id", 2}, {"category", string("A")}}));
+        store.insert(Document({0.0f, 1.0f}, {{"id", 3}, {"category", string("B")}}));
+        store.insert(Document({0.1f, 0.9f}, {{"id", 4}, {"category", string("B")}}));
+        
+        CosineSimilarity metric;
+        AnnoySearchEngine annoy_engine(store, metric, 5, 2);
+        FlatSearchEngine flat_engine(store, metric);
+        
+        // Test basic search
+        vector<float> query = {1.0f, 0.0f};
+        auto annoy_results = annoy_engine.search(query, 4);
+        auto flat_results = flat_engine.search(query, 4);
+        
+        assert_test(annoy_results.size() <= 4, "Annoy search - result count constraint");
+        assert_test(!annoy_results.empty(), "Annoy search - non-empty results");
+        
+        // Check that top result matches (Annoy should find the best match)
+        if (!annoy_results.empty() && !flat_results.empty()) {
+            int annoy_top = std::get<int>(annoy_results[0].second.metadata.at("id"));
+            int flat_top = std::get<int>(flat_results[0].second.metadata.at("id"));
+            assert_test(annoy_top == flat_top, "Annoy vs Flat - top result match");
+        }
+        
+        // Test filtered search
+        json filter = json{{"op", "EQ"}, {"field", "category"}, {"value", "A"}};
+        auto filtered_results = annoy_engine.search(query, 10, filter);
+        
+        for (const auto& result : filtered_results) {
+            string category = std::get<string>(result.second.metadata.at("category"));
+            assert_test(category == "A", "Annoy search with filter - category match");
+        }
+    }
+    
     void test_storage_operations() {
         cout << "\n=== Testing Storage Operations ===" << endl;
         
@@ -258,8 +334,8 @@ public:
         cout << "\n=== Testing Performance Comparison ===" << endl;
         
         VectorStore store;
-        const int num_docs = 1000;
-        const int dimensions = 50;
+        const int num_docs = 500; // Reduced for faster testing
+        const int dimensions = 32;
         
         // Create test dataset
         std::random_device rd;
@@ -282,8 +358,16 @@ public:
         auto flat_build_time = duration_cast<microseconds>(high_resolution_clock::now() - start);
         
         start = high_resolution_clock::now();
-        LSHSearchEngine lsh_engine(store, metric, 10, 8);
+        LSHSearchEngine lsh_engine(store, metric, 8, 6);
         auto lsh_build_time = duration_cast<microseconds>(high_resolution_clock::now() - start);
+        
+        start = high_resolution_clock::now();
+        HNSWSearchEngine hnsw_engine(store, metric, 8, 50, 25);
+        auto hnsw_build_time = duration_cast<microseconds>(high_resolution_clock::now() - start);
+        
+        start = high_resolution_clock::now();
+        AnnoySearchEngine annoy_engine(store, metric, 5, 25);
+        auto annoy_build_time = duration_cast<microseconds>(high_resolution_clock::now() - start);
         
         // Test query performance
         vector<float> query(dimensions);
@@ -299,13 +383,25 @@ public:
         auto lsh_results = lsh_engine.search(query, 10);
         auto lsh_query_time = duration_cast<microseconds>(high_resolution_clock::now() - start);
         
+        start = high_resolution_clock::now();
+        auto hnsw_results = hnsw_engine.search(query, 10);
+        auto hnsw_query_time = duration_cast<microseconds>(high_resolution_clock::now() - start);
+        
+        start = high_resolution_clock::now();
+        auto annoy_results = annoy_engine.search(query, 10);
+        auto annoy_query_time = duration_cast<microseconds>(high_resolution_clock::now() - start);
+        
         cout << "Performance Results:" << endl;
         cout << "  Flat build: " << flat_build_time.count() << "μs, query: " << flat_query_time.count() << "μs" << endl;
         cout << "  LSH build: " << lsh_build_time.count() << "μs, query: " << lsh_query_time.count() << "μs" << endl;
+        cout << "  HNSW build: " << hnsw_build_time.count() << "μs, query: " << hnsw_query_time.count() << "μs" << endl;
+        cout << "  Annoy build: " << annoy_build_time.count() << "μs, query: " << annoy_query_time.count() << "μs" << endl;
         
         assert_test(flat_results.size() == 10, "Performance test - flat results count");
         assert_test(lsh_results.size() <= 10, "Performance test - LSH results count");
-        assert_test(!flat_results.empty() && !lsh_results.empty(), "Performance test - non-empty results");
+        assert_test(hnsw_results.size() <= 10, "Performance test - HNSW results count");
+        assert_test(annoy_results.size() <= 10, "Performance test - Annoy results count");
+        assert_test(!flat_results.empty() && !lsh_results.empty() && !hnsw_results.empty() && !annoy_results.empty(), "Performance test - non-empty results");
     }
     
     void run_all_tests() {
@@ -318,6 +414,8 @@ public:
         test_metadata_filter();
         test_flat_search_engine();
         test_lsh_search_engine();
+        test_hnsw_search_engine();
+        test_annoy_search_engine();
         test_storage_operations();
         test_index_operations();
         test_performance_comparison();
