@@ -1,25 +1,12 @@
 #pragma once
 #include <vector>
-#include <stdexcept>
-using namespace std;
+using std::vector;
 
-class SimilarityMetric {
+// virtual class to compute similarity between vectors
+class Similarity {
 public:
-    virtual float compute(const vector<float>& a, const vector<float>& b) const = 0;
-    virtual ~SimilarityMetric() = default;
-};
+    virtual ~Similarity() = default;
 
-class DotProductSimilarity : public SimilarityMetric {
-public:
-    float compute(const vector<float>& a, const vector<float>& b) const override;
-};
-
-class CosineSimilarity : public SimilarityMetric {
-public:
-    float compute(const vector<float>& a, const vector<float>& b) const override;
-};
-
-class EuclideanSimilarity : public SimilarityMetric {
-public:
-    float compute(const vector<float>& a, const vector<float>& b) const override;
+    // Method to compute the similarity score between two vectors
+    virtual float compute(const vector<float>& emb1, const vector<float>& emb2) const = 0;
 };

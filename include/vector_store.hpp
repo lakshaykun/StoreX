@@ -1,44 +1,33 @@
 #pragma once
+#include "collection.hpp"
 #include "document.hpp"
-#include "storage.hpp"
-#include <vector>
+#include "index.hpp"
+#include "similarity.hpp"
 #include <memory>
-using namespace std;
+using std::shared_ptr;
+using std::make_shared;
 
-class VectorStore {
+class vector_store {
 private:
-    vector<Document> Documents;
-    unique_ptr<Storage> storage;
-    bool auto_save;
-
+    shared_ptr<Collection> collection;
+    shared_ptr<Index> index;
+    shared_ptr<Similarity> similarity;
 public:
-    // Default constructor - no persistence
-    VectorStore();
-    
-    // Constructor with storage path - enables persistence
-    VectorStore(const string& storage_path, bool auto_save = true);
-    
-    // Insert a single document
-    void insert(const Document& v);
-    
-    // Insert multiple documents
-    void insert(const vector<Document>& docs);
-    
-    // Get all documents
-    const vector<Document>& getAll() const;
-    
-    // Save all documents to storage
-    bool save();
-    
-    // Load documents from storage
-    bool load();
-    
-    // Clear all documents from memory and storage
-    bool clear();
-    
-    // Get the number of documents
-    size_t size() const;
-    
-    // Check if storage is enabled
-    bool hasStorage() const;
+    // Default constructor without persistence
+    vector_store();
+
+    // custom setup constructor
+    vector_store(shared_ptr<Index> ind, shared_ptr<Collection> coll, shared_ptr<Similarity> sim);
+
+    // Method to insert a document into the vector store
+    void insert(Document& doc);
+
+    // Method to search for a document by metadata
+    vector<Document> search(const Metadata& meta) const;
+
+    // Method to search for a document by embedding
+    vector<Document> search(const vector<float>& embedding) const;
+
+    // Method to search for a document by metadata and embedding
+    vector<Document> search(const Metadata& meta, const vector<float>& embedding) const;
 };
