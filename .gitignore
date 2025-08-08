@@ -1,3 +1,63 @@
+# IDE and Editor files
 /.vscode
+.idea/
+*.swp
+*.swo
+*~
+
+# Build directories and object files
 obj/
+build/
 app
+*.o
+*.so
+*.dll
+*.dylib
+*.a
+*.lib
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+venv/
+env/
+.env
+.venv
+
+# Compiled Python extensions
+*.cpython-*.so
+*.pyd
+
+# Database files (keep example files but ignore runtime data)
+*.db
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists*.txt
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+core
+*.core
+
+# Documentation build artifacts
+docs/_build/
+*.pdf
