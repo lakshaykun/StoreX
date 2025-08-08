@@ -2,23 +2,34 @@
 #include <string>
 #include <vector>
 #include "document.hpp"
-using std::string;
+#include "collection.hpp"
+#include "similarity.hpp"
+
+using std::shared_ptr;
+using std::make_shared;
 using std::vector;
 
-// virtual class to create indexing for vector store
+// Abstract virtual class to create indexing for vector store
 class Index {
+protected:
+    shared_ptr<Collection> collection;
+    shared_ptr<Similarity> similarity;
 public:
     virtual ~Index() = default;
 
-    // Method to insert a key-value pair into the index
-    virtual void insert(Document& doc) = 0;
+    // Constructor to initialize the index with a collection and similarity measure
+    Index(shared_ptr<Collection> coll, shared_ptr<Similarity> sim)
+        : collection(std::move(coll)), similarity(std::move(sim)) {}
 
-    // Method to search for a document by metadata
-    virtual vector<Document> search(const Metadata& meta) const = 0;
+    // Method to insert a document into the index
+    virtual int insert(Document& doc) = 0;
 
-    // Method to search for a document by embedding
-    virtual vector<Document> search(const vector<float>& embedding) const = 0;
+    // Method to search for documents of a specific metadata
+    virtual vector<Document> search(const Metadata& meta, int k) const = 0;
 
-    // Method to search for a document by metadata and embedding
-    virtual vector<Document> search(const Metadata& meta, const vector<float>& embedding) const = 0;
+    // Method to search for top k similar documents by embedding
+    virtual vector<Document> search(const vector<float>& embedding, int k) const = 0;
+
+    // Method to search for top k similar documents by embedding with same metadata
+    virtual vector<Document> search(const Metadata& meta, const vector<float>& embedding, int k) const = 0;
 };

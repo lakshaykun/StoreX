@@ -4,10 +4,14 @@
 using std::vector;
 
 class Collection {
-    vector<Document> documents;
 public:
-    virtual ~Collection() = default;
+    vector<Document> documents;
+    
+    ~Collection() = default;
     
     // Method to insert a document into the collection
-    virtual void insert(Document& doc) = 0;
+    int insert(Document& doc) {
+        documents.push_back(doc);
+        return documents.size() - 1; // Return the index of the inserted document
+    }
 };

@@ -11,8 +11,10 @@ using std::cout;
 using json = nlohmann::json;
 
 class Metadata {
-public:
+private:
+    // JSON object to store metadata
     json data;
+public:
     // default constructor
     Metadata () = default;
     // constructor from json object
@@ -24,6 +26,14 @@ public:
     // method to convert Metadata to JSON string
     void printMetadata() const {
         cout << data.dump(4) << std::endl;
+    }
+    // method to get the data
+    const json& getData() const {
+        return data;
+    }
+    // operator to compare Metadata objects
+    bool operator==(const Metadata& other) const {
+        return data == other.getData();
     }
 };
 
@@ -48,7 +58,7 @@ public:
     void printDocument() const {
         json j;
         j["embedding"] = embedding;
-        j["metadata"] = metadata.data;
+        j["metadata"] = metadata.getData();
         cout << j.dump(4) << std::endl;
     }
 
@@ -74,6 +84,6 @@ public:
 
     // method to check if the document is empty
     bool isEmpty() const {
-        return embedding.empty() && metadata.data.empty();
+        return embedding.empty() && metadata.getData().empty();
     }
 };
