@@ -1,36 +1,46 @@
-## what am i making? 
-    vector databse
+# StoreX
 
-## tell me how should i approch it, how should i think about this project and where to start what to learn, what to use, which things to consider while writing the code.
-Ask: “What is this system supposed to do really well?”
-    The answer for a vector database is:
-        Fast similarity search over high-dimensional vectors
-        Scalable to millions+ entries
-        Filterable with metadata
-        Persistent (saves & loads data)
-        Bindable (usable via Python, LangChain, API)
-        So always optimize for performance, extensibility, and correctness.
+StoreX is a simple C++ project that demonstrates the use of a Makefile for building and testing.
 
-## Project Approach – Step-by-Step Plan
-    Phase 1: Plan the MVP (Minimum Viable Product)
-    Just get the basics working:
-        Vector insertion
-        Brute-force similarity search (e.g., cosine similarity)
-        Metadata storage
-        In-memory only
+## Directory Structure
 
-    Phase 2: Upgrade with ANN Indexing
-        Methods to include:
-            HNSW (Hierarchical Navigable Small World) graphs
-            ANNOY (Approximate Nearest Neighbors Oh Yeah)
-            LSH (Locality Sensitive Hashing)
-        Why? Because brute-force search is too slow for large datasets.
-        10x+ faster than brute-force
-        Keeps you competitive with tools like FAISS/Pinecone
+```
+StoreX/
+├── bin/                # Compiled binaries
+├── include/            # Header files
+├── obj/                # Object files
+├── src/                # Source files
+├── test/               # Test files
+├── Makefile            # Makefile for building the project
+└── README.md           # Project documentation
+```
 
-    Phase 3: Add Persistence + Python Bindings
-        Now make your system practical:
-            Save/load to/from disk
-            Expose API to Python (using pybind11)
+## Build Instructions
 
+To build the project, run the following command:
 
+```bash
+make
+```
+
+This will compile the source files and create the necessary binaries in the `bin/` directory.
+
+## Testing
+
+To run the tests, use the following command:
+
+```bash
+make test
+```
+
+This will compile the test files and execute the tests.
+
+## Cleaning Up
+
+To clean up the generated files, you can run:
+
+```bash
+make clean
+```
+
+This will remove the `bin/`, `obj/`, and any other generated files.

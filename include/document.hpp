@@ -43,6 +43,9 @@ private:
     Metadata metadata;
 public:
     // default constructor
+    Document() = default;
+    
+    // constructor with embedding and metadata
     Document(vector<float> emb, const Metadata& meta) 
         : embedding(std::move(emb)), metadata(meta) {}
     
@@ -85,5 +88,13 @@ public:
     // method to check if the document is empty
     bool isEmpty() const {
         return embedding.empty() && metadata.getData().empty();
+    }
+
+    // operator to compare Document objects
+    bool operator==(const Document& other) const {
+        return embedding == other.getEmbedding() && metadata == other.getMetadata();
+    }
+    bool operator!=(const Document& other) const {
+        return !(*this == other);
     }
 };
