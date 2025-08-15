@@ -2,7 +2,7 @@
 
 int main() {
     cout << "starting test\n";
-    auto col = make_shared<Collection>();
+    auto col = make_shared<Collection>(1);
     auto sim = make_shared<EuclideanSimilarity>();
     auto ind = make_shared<FlatIndex>(col, sim);
     vector_store store(ind, col);
@@ -15,7 +15,7 @@ int main() {
             for (float k=-1; k<=10; k++){
                 docs.emplace_back(
                     Document(
-                        {i, j, k}, 
+                        {i, j, k},
                         meta1
                     )
                 );
@@ -62,8 +62,9 @@ int main() {
     // for (auto& it: res4) {
     //     it.printDocument();
     // }
-
-    cout << store.fetchId(store.fetchDocument(1)) << '\n';
+    int i = 20;
+    store.fetchDocument(i).printDocument();
+    cout << store.fetchId(store.fetchDocument(i)) << '\n';
 
     return 0;
 }

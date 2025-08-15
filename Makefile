@@ -1,5 +1,6 @@
 CXX = g++
 CXXFLAGS = -Wall -Wextra -g -std=c++17 -Iinclude
+LDFLAGS = -lsqlite3 
 
 SRC_DIR = src
 TEST_DIR = test
@@ -20,12 +21,12 @@ all: $(MAIN_TARGET) $(TEST_TARGET)
 # Main executable
 $(MAIN_TARGET): $(MAIN_OBJ) $(SRC_OBJS)
 	@mkdir -p $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)  # <-- Added $(LDFLAGS)
 
 # Test executable
 $(TEST_TARGET): $(TEST_OBJ) $(SRC_OBJS)
 	@mkdir -p $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)  # <-- Added $(LDFLAGS)
 
 # Compile main.cpp
 $(OBJ_DIR)/main.o: main.cpp

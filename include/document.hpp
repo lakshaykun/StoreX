@@ -16,21 +16,40 @@ private:
     json data;
 public:
     // default constructor
-    Metadata () = default;
+    Metadata () { data = json::object(); }
     // constructor from json object
     Metadata(const json& j) : data(j) {}
     // constructor from JSON string
     Metadata(const string& jsonString) {
-        data = json::parse(jsonString);
+        // if the string is empty, initialize with an empty JSON object
+        if (jsonString.empty()) {
+            data = json::object();
+            return;
+        }
+        // parse the JSON string
+        try {
+            data = json::parse(jsonString);
+        } catch (const json::parse_error& e) {
+            std::cerr << "Error parsing JSON string: " << e.what() << std::endl;
+            data = json::object();
+        }
     }
+
     // method to convert Metadata to JSON string
     void printMetadata() const {
-        cout << data.dump(4) << std::endl;
+        std::cout << data.dump(4) << std::endl;
     }
+
     // method to get the data
     const json& getData() const {
         return data;
     }
+
+    // Method to get the data as a string
+    string toString() const {
+        return data.dump();
+    }
+
     // operator to compare Metadata objects
     bool operator==(const Metadata& other) const {
         return data == other.getData();
@@ -45,6 +64,12 @@ public:
     // default constructor
     Document() = default;
     
+    // constructor with embedding only
+    Document(vector<float> emb) : embedding(std::move(emb)) {
+        // Initialize metadata with an empty JSON object
+        metadata = Metadata(json::object());
+    }
+
     // constructor with embedding and metadata
     Document(vector<float> emb, const Metadata& meta) 
         : embedding(std::move(emb)), metadata(meta) {}

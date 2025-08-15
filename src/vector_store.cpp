@@ -11,7 +11,7 @@ vector_store::vector_store()
 
 // Custom setup constructor
 vector_store::vector_store(shared_ptr<Index> ind, shared_ptr<Collection> coll)
-    : index(ind), collection(coll) {}
+    : collection(coll), index(ind) {}
 
 // Method to insert a document into the vector store
 size_t vector_store::insert(Document& doc) {
@@ -23,12 +23,12 @@ size_t vector_store::insert(Document& doc) {
 }
 
 // Method to update a document in the vector store
-size_t vector_store::update(size_t id, Document& doc) {
+void vector_store::update(size_t id, Document& doc) {
     if (!index) {
         throw std::runtime_error("Index is not initialized.");
-        return 0; // Indicate failure
+        return;
     }
-    return index->update(id, doc);
+    index->update(id, doc);
 }
 
 // Method to insert multiple documents into the vector store

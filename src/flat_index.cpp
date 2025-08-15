@@ -18,12 +18,12 @@ size_t FlatIndex::insert(Document& doc) {
 
 
 // Method to update a document in the index
-size_t FlatIndex::update(size_t id, Document& doc){
+void FlatIndex::update(size_t id, Document& doc){
     if (!collection){
         cout << "collection is null\n";
-        return 0;
+        return;
     }
-    return collection->update(id, doc);
+    collection->update(id, doc);
 }
 
 // Method to search for documents of a specific metadata

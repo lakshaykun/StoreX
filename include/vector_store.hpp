@@ -8,8 +8,8 @@ using std::make_shared;
 class vector_store {
 private:
     shared_ptr<Collection> collection;
-    shared_ptr<Index> index;
     shared_ptr<Similarity> similarity;
+    shared_ptr<Index> index;
 public:
     // Default constructor without persistence
     vector_store();
@@ -24,7 +24,7 @@ public:
     vector<size_t> insert(vector<Document>& docs);
 
     // Method to update a document in the vector store
-    size_t update(size_t id, Document& doc);
+    void update(size_t id, Document& doc);
 
     // Method to search for k documents of a specific metadata
     vector<Document> search(const Metadata& meta, size_t k);

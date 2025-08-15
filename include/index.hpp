@@ -24,7 +24,7 @@ public:
     virtual size_t insert(Document& doc) = 0;
 
     // Method to update a document in the index
-    virtual size_t update(size_t id, Document& doc) = 0;
+    virtual void update(size_t id, Document& doc) = 0;
 
     // Method to search for documents of a specific metadata
     virtual vector<Document> search(const Metadata& meta, size_t k) const = 0;
@@ -48,7 +48,7 @@ public:
 
     size_t insert(Document& doc) override;
 
-    size_t update(size_t id, Document& doc) override;
+    void update(size_t id, Document& doc) override;
 
     vector<Document> search(const Metadata& meta, size_t k) const override;
 
