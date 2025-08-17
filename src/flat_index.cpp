@@ -10,8 +10,7 @@ FlatIndex::FlatIndex(shared_ptr<Collection> coll, shared_ptr<Similarity> sim)
 // Method to insert a document into the index
 size_t FlatIndex::insert(Document& doc) {
     if (!collection){
-        cout << "collection is null\n";
-        return 0; // Indicate failure
+        throw std::runtime_error("collection is null");
     }
     return collection->insert(doc);
 }
@@ -20,8 +19,7 @@ size_t FlatIndex::insert(Document& doc) {
 // Method to update a document in the index
 void FlatIndex::update(size_t id, Document& doc){
     if (!collection){
-        cout << "collection is null\n";
-        return;
+        throw std::runtime_error("collection is null");
     }
     collection->update(id, doc);
 }

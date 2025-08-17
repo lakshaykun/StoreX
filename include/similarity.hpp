@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include "utility.hpp"
 
 using std::vector;
 using std::string;

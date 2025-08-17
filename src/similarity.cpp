@@ -6,11 +6,10 @@ float CosineSimilarity::compute(const vector<float>& emb1, const vector<float>& 
         throw invalid_argument("Embeddings must be non-empty and of the same size.");
     }
     
-    float dotProduct = 0.0f;
+    float dotProduct = utility::dotProduct(emb1, emb2);
     float normA = 0.0f;
     float normB = 0.0f;
     for (size_t i = 0; i < emb1.size(); ++i) {
-        dotProduct += emb1[i] * emb2[i];
         normA += emb1[i] * emb1[i];
         normB += emb2[i] * emb2[i];
     }

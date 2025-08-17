@@ -112,10 +112,7 @@ private:
     size_t numBits;
     size_t numBands;
     size_t vecSize = 0; // Size of the vectors in the collection
-
-    // Utility function to calculate dot product of two vectors
-    int dotProduct(const vector<float>& emb1, const vector<float>& emb2) const;
-
+    
     // Hash table to store the bands and their corresponding document IDs
     vector<unordered_map<vector<int>, std::unordered_set<size_t>, BandKeyHash>> bands;
 
@@ -163,9 +160,6 @@ private:
     size_t numBands;   // Number of Hash Tables
     size_t bucketWidth;   // Bucket Width
     size_t vecSize = 0; // Size of the vectors in the collection
-
-    // Utility function to calculate dot product of two vectors
-    float dotProduct(const vector<float>& emb1, const vector<float>& emb2) const;
 
     // Hash table to store the bands and their corresponding document IDs
     vector<unordered_map<vector<int>, std::unordered_set<size_t>, BandKeyHash>> bands;

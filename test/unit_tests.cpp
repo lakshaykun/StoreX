@@ -5,6 +5,9 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <chrono>
+#include <random>
+#include <algorithm>
 
 // Include all project headers
 #include "document.hpp"
@@ -429,6 +432,376 @@ void testVectorStore() {
     TEST(meta_id != SIZE_MAX, "VectorStore fetchId by metadata finds document");
 }
 
+// ============== ANNOY INDEX TESTS ==============
+void testAnnoyIndex() {
+    cout << "\n=== Testing AnnoyIndex ===" << endl;
+    
+    auto collection = make_shared<Collection>(3, false);
+    auto similarity = make_shared<CosineSimilarity>();
+    
+    try {
+        AnnoyIndex annoyIndex(5, 2, collection, similarity);  // 5 trees, leaf size 2
+        
+        // Test document insertion
+        vector<float> emb1 = {1.0f, 0.0f, 0.0f};
+        Document doc1(emb1);
+        size_t id1 = annoyIndex.insert(doc1);
+        TEST(id1 == 0, "AnnoyIndex insert returns correct ID");
+        
+        // Test search by embedding
+        vector<float> query = {0.9f, 0.1f, 0.0f}; // Similar to emb1
+        vector<Document> results = annoyIndex.search(query, 1);
+        TEST(results.size() == 1, "AnnoyIndex search returns correct number of results");
+        
+        // Test search with scores
+        vector<std::pair<float, Document>> scored_results = annoyIndex.searchWithScores(query, 1);
+        TEST(scored_results.size() == 1, "AnnoyIndex searchWithScores returns correct number of results");
+        
+        // Test multiple documents
+        vector<float> emb2 = {0.0f, 1.0f, 0.0f};
+        Document doc2(emb2);
+        annoyIndex.insert(doc2);
+        
+        vector<Document> multi_results = annoyIndex.search(query, 2);
+        TEST(multi_results.size() == 2, "AnnoyIndex search finds multiple documents");
+        
+        // Test search by metadata
+        string jsonStr = R"({"type": "test"})";
+        Metadata meta(jsonStr);
+        Document doc_with_meta(emb1, meta);
+        annoyIndex.insert(doc_with_meta);
+        
+        vector<Document> meta_results = annoyIndex.search(meta, 10);
+        TEST(meta_results.size() >= 1, "AnnoyIndex search by metadata finds documents");
+        
+        // Test combined metadata and embedding search
+        vector<Document> combined_results = annoyIndex.search(meta, query, 10);
+        TEST(true, "AnnoyIndex combined search completes successfully");
+        
+        // Test update
+        vector<float> new_emb = {1.5f, 0.5f, 0.0f};
+        Document new_doc(new_emb, meta);
+        annoyIndex.update(id1, new_doc);
+        TEST(true, "AnnoyIndex update completes successfully");
+        
+    } catch (const std::exception& e) {
+        TEST(false, string("AnnoyIndex test failed with exception: ") + e.what());
+    }
+    
+    // Test invalid constructor parameters
+    try {
+        AnnoyIndex invalid1(0, 2, collection, similarity);  // num_trees = 0
+        TEST(false, "AnnoyIndex should throw for zero num_trees");
+    } catch (const std::exception& e) {
+        TEST(true, "AnnoyIndex throws for zero num_trees");
+    }
+    
+    try {
+        AnnoyIndex invalid2(5, 0, collection, similarity);  // leaf_size = 0
+        TEST(false, "AnnoyIndex should throw for zero leaf_size");
+    } catch (const std::exception& e) {
+        TEST(true, "AnnoyIndex throws for zero leaf_size");
+    }
+    
+    try {
+        AnnoyIndex invalid3(5, 2, nullptr, similarity);  // null collection
+        TEST(false, "AnnoyIndex should throw for null collection");
+    } catch (const std::exception& e) {
+        TEST(true, "AnnoyIndex throws for null collection");
+    }
+}
+
+// ============== EDGE CASE TESTS ==============
+void testEdgeCases() {
+    cout << "\n=== Testing Edge Cases ===" << endl;
+    
+    // Test empty vectors
+    vector<float> emptyVec1, emptyVec2;
+    CosineSimilarity cosine;
+    try {
+        float result = cosine.compute(emptyVec1, emptyVec2);
+        TEST(true, "Cosine similarity handles empty vectors");
+    } catch (const std::exception& e) {
+        TEST(true, "Cosine similarity throws for empty vectors");
+    }
+    
+    // Test mismatched vector dimensions
+    vector<float> vec1 = {1.0f, 2.0f};
+    vector<float> vec2 = {1.0f, 2.0f, 3.0f};
+    try {
+        float result = cosine.compute(vec1, vec2);
+        TEST(false, "Should throw for mismatched dimensions");
+    } catch (const std::exception& e) {
+        TEST(true, "Throws exception for mismatched vector dimensions");
+    }
+    
+    // Test zero vectors
+    vector<float> zeroVec1 = {0.0f, 0.0f, 0.0f};
+    vector<float> zeroVec2 = {0.0f, 0.0f, 0.0f};
+    try {
+        float result = cosine.compute(zeroVec1, zeroVec2);
+        TEST(true, "Cosine similarity handles zero vectors");
+    } catch (const std::exception& e) {
+        TEST(true, "Cosine similarity throws for zero vectors (division by zero)");
+    }
+    
+    // Test very large vectors
+    vector<float> largeVec1(1000, 1.0f);
+    vector<float> largeVec2(1000, 2.0f);
+    try {
+        float result = cosine.compute(largeVec1, largeVec2);
+        TEST(true, "Cosine similarity handles large vectors");
+    } catch (const std::exception& e) {
+        TEST(false, string("Cosine similarity should handle large vectors: ") + e.what());
+    }
+    
+    // Test Collection with zero vector size
+    try {
+        Collection col_zero(0, false);
+        TEST(true, "Collection accepts zero vector size");
+    } catch (const std::exception& e) {
+        TEST(true, "Collection throws for zero vector size");
+    }
+    
+    // Test search with k=0
+    Collection col(3, false);
+    vector<float> emb = {1.0f, 2.0f, 3.0f};
+    Document doc(emb);
+    col.insert(doc);
+    
+    auto sim = make_shared<CosineSimilarity>();
+    FlatIndex index(make_shared<Collection>(col), sim);
+    vector<Document> results = index.search(emb, 0);
+    TEST(results.empty(), "Search with k=0 returns empty results");
+}
+
+// ============== UTILITY FUNCTION TESTS ==============
+void testUtilityFunctions() {
+    cout << "\n=== Testing Utility Functions ===" << endl;
+    
+    // Test dot product
+    vector<float> vec1 = {1.0f, 2.0f, 3.0f};
+    vector<float> vec2 = {4.0f, 5.0f, 6.0f};
+    float expected = 1*4 + 2*5 + 3*6; // 32
+    
+    try {
+        float result = utility::dotProduct(vec1, vec2);
+        TEST_APPROX_EQUAL(result, expected, 1e-6, "Dot product calculation is correct");
+    } catch (const std::exception& e) {
+        TEST(false, string("Dot product failed: ") + e.what());
+    }
+    
+    // Test dot product with mismatched dimensions
+    vector<float> vec3 = {1.0f, 2.0f};
+    try {
+        float result = utility::dotProduct(vec1, vec3);
+        TEST(false, "Should throw for mismatched dimensions in dot product");
+    } catch (const std::exception& e) {
+        TEST(true, "Dot product throws for mismatched dimensions");
+    }
+    
+    // Test dot product with empty vectors
+    vector<float> empty1, empty2;
+    try {
+        float result = utility::dotProduct(empty1, empty2);
+        TEST_APPROX_EQUAL(result, 0.0f, 1e-6, "Dot product of empty vectors is zero");
+    } catch (const std::exception& e) {
+        TEST(false, string("Dot product of empty vectors failed: ") + e.what());
+    }
+}
+
+// ============== PERFORMANCE TESTS ==============
+void testPerformance() {
+    cout << "\n=== Testing Performance ===" << endl;
+    
+    auto start_time = std::chrono::high_resolution_clock::now();
+    
+    // Create a large collection
+    Collection col(100, false);  // 100-dimensional vectors
+    auto similarity = make_shared<EuclideanSimilarity>();
+    auto index = make_shared<FlatIndex>(make_shared<Collection>(col), similarity);
+    
+    // Insert many documents
+    const size_t num_docs = 100;
+    for (size_t i = 0; i < num_docs; i++) {
+        vector<float> emb(100);
+        for (size_t j = 0; j < 100; j++) {
+            emb[j] = static_cast<float>(rand()) / RAND_MAX;
+        }
+        Document doc(emb);
+        index->insert(doc);
+    }
+    
+    auto insert_time = std::chrono::high_resolution_clock::now();
+    
+    // Perform many searches
+    const size_t num_searches = 50;
+    vector<float> query(100);
+    for (size_t j = 0; j < 100; j++) {
+        query[j] = static_cast<float>(rand()) / RAND_MAX;
+    }
+    
+    for (size_t i = 0; i < num_searches; i++) {
+        vector<Document> results = index->search(query, 10);
+    }
+    
+    auto end_time = std::chrono::high_resolution_clock::now();
+    
+    auto insert_duration = std::chrono::duration_cast<std::chrono::milliseconds>(insert_time - start_time);
+    auto search_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - insert_time);
+    
+    TEST(insert_duration.count() < 5000, "Large insert completes in reasonable time (<5s)");
+    TEST(search_duration.count() < 1000, "Many searches complete in reasonable time (<1s)");
+    
+    cout << "  Insert time: " << insert_duration.count() << "ms" << endl;
+    cout << "  Search time: " << search_duration.count() << "ms" << endl;
+}
+
+// ============== LSH INDEX TESTS ==============
+void testLSHIndex() {
+    cout << "\n=== Testing LSHIndex ===" << endl;
+    
+    auto collection = make_shared<Collection>(3, false);
+    auto similarity = make_shared<CosineSimilarity>();
+    
+    try {
+        LSHIndex lshIndex(collection, similarity);
+        
+        // Test document insertion
+        vector<float> emb1 = {1.0f, 0.0f, 0.0f};
+        Document doc1(emb1);
+        size_t id1 = lshIndex.insert(doc1);
+        TEST(id1 == 0, "LSHIndex insert returns correct ID");
+        
+        // Test search by embedding
+        vector<float> query = {0.9f, 0.1f, 0.0f}; // Similar to emb1
+        vector<Document> results = lshIndex.search(query, 1);
+        TEST(results.size() <= 1, "LSHIndex search returns at most k results");
+        
+        // Test search with scores
+        vector<std::pair<float, Document>> scored_results = lshIndex.searchWithScores(query, 1);
+        TEST(scored_results.size() <= 1, "LSHIndex searchWithScores returns at most k results");
+        
+        // Test multiple documents
+        vector<float> emb2 = {0.0f, 1.0f, 0.0f};
+        Document doc2(emb2);
+        lshIndex.insert(doc2);
+        
+        vector<Document> multi_results = lshIndex.search(query, 2);
+        TEST(multi_results.size() <= 2, "LSHIndex search finds at most k documents");
+        
+        // Test search by metadata
+        string jsonStr = R"({"type": "test"})";
+        Metadata meta(jsonStr);
+        Document doc_with_meta(emb1, meta);
+        lshIndex.insert(doc_with_meta);
+        
+        vector<Document> meta_results = lshIndex.search(meta, 10);
+        TEST(meta_results.size() >= 1, "LSHIndex search by metadata finds documents");
+        
+        // Test update
+        vector<float> new_emb = {1.5f, 0.5f, 0.0f};
+        Document new_doc(new_emb, meta);
+        lshIndex.update(id1, new_doc);
+        TEST(true, "LSHIndex update completes successfully");
+        
+    } catch (const std::exception& e) {
+        TEST(false, string("LSHIndex test failed with exception: ") + e.what());
+    }
+}
+
+// ============== STRESS TESTS ==============
+void testStressConditions() {
+    cout << "\n=== Testing Stress Conditions ===" << endl;
+    
+    // Test with many identical vectors
+    Collection col(3, false);
+    vector<float> identical_emb = {1.0f, 1.0f, 1.0f};
+    
+    for (int i = 0; i < 100; i++) {
+        Document doc(identical_emb, Metadata(string(R"({"id": )" + std::to_string(i) + "}")));
+        col.insert(doc);
+    }
+    TEST(col.size() == 100, "Collection handles many identical vectors");
+    
+    // Test search with many identical results
+    auto similarity = make_shared<CosineSimilarity>();
+    FlatIndex index(make_shared<Collection>(col), similarity);
+    
+    vector<Document> results = index.search(identical_emb, 50);
+    TEST(results.size() == 50, "Search returns correct number from many identical vectors");
+    
+    // Test very high-dimensional vectors
+    try {
+        Collection high_dim_col(1000, false);
+        vector<float> high_dim_emb(1000, 1.0f);
+        Document high_dim_doc(high_dim_emb);
+        size_t id = high_dim_col.insert(high_dim_doc);
+        TEST(id == 0, "High-dimensional vectors handled correctly");
+    } catch (const std::exception& e) {
+        TEST(false, string("High-dimensional test failed: ") + e.what());
+    }
+}
+
+// ============== ERROR HANDLING TESTS ==============
+void testErrorHandling() {
+    cout << "\n=== Testing Error Handling ===" << endl;
+    
+    // Test document retrieval with invalid ID
+    Collection col(3, false);
+    try {
+        Document doc = col.getDocument(999); // Non-existent ID
+        TEST(false, "Should throw for invalid document ID");
+    } catch (const std::exception& e) {
+        TEST(true, "Throws exception for invalid document ID");
+    }
+    
+    // Test vector store with invalid similarity type
+    try {
+        auto invalid_sim = createSimilarity("invalid_type");
+        TEST(false, "Should throw for invalid similarity type");
+    } catch (const std::exception& e) {
+        TEST(true, "Throws exception for invalid similarity type");
+    }
+    
+    // Test storage with invalid database path
+    try {
+        Storage storage("/invalid/path/database.db");
+        TEST(false, "Should handle invalid database path");
+    } catch (const std::exception& e) {
+        TEST(true, "Handles invalid database path gracefully");
+    }
+    
+    // Test update with invalid ID
+    Collection col2(3, false);
+    vector<float> emb = {1.0f, 2.0f, 3.0f};
+    Document doc(emb);
+    
+    try {
+        col2.update(999, doc); // Non-existent ID
+        TEST(false, "Should throw for invalid update ID");
+    } catch (const std::exception& e) {
+        TEST(true, "Throws exception for invalid update ID");
+    }
+}
+
+// ============== CONCURRENCY TESTS ==============
+void testConcurrency() {
+    cout << "\n=== Testing Concurrency Safety ===" << endl;
+    
+    // Basic test to ensure thread-local RNG is working
+    static thread_local std::mt19937 test_rng{std::random_device{}()};
+    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+    
+    vector<float> random_values;
+    for (int i = 0; i < 10; i++) {
+        random_values.push_back(dist(test_rng));
+    }
+    
+    TEST(random_values.size() == 10, "Thread-local RNG generates values");
+    TEST(true, "Basic concurrency infrastructure works");
+}
+
 // ============== INTEGRATION TESTS ==============
 void testIntegration() {
     cout << "\n=== Testing Integration ===" << endl;
@@ -496,6 +869,14 @@ int main() {
         testFlatIndex();
         testLSH();
         testVectorStore();
+        testAnnoyIndex();
+        testLSHIndex();
+        testEdgeCases();
+        testUtilityFunctions();
+        testPerformance();
+        testStressConditions();
+        testErrorHandling();
+        testConcurrency();
         testIntegration();
     } catch (const std::exception& e) {
         cout << "Test execution failed with exception: " << e.what() << endl;

@@ -8,9 +8,8 @@ LSHIndex::LSHIndex(shared_ptr<Collection> coll, shared_ptr<Similarity> sim)
 }
 
 size_t LSHIndex::insert(Document& doc) {
-    if (!collection) {
-        cout << "collection is null\n";
-        return 0;
+    if (!collection){
+        throw std::runtime_error("collection is null");
     }
     int id = collection->insert(doc);
     lsh->insert(doc.getEmbedding(), id);
@@ -18,9 +17,8 @@ size_t LSHIndex::insert(Document& doc) {
 }
 
 void LSHIndex::update(size_t id, Document& doc) {
-    if (!collection) {
-        cout << "collection is null\n";
-        return;
+    if (!collection){
+        throw std::runtime_error("collection is null");
     }
     Document existingDoc = collection->getDocument(id);
     collection->update(id, doc);

@@ -262,24 +262,12 @@ LSHCosine::LSHCosine(size_t nBits, size_t nBands, shared_ptr<Collection> coll, s
     }
 }
 
-// Utility function to calculate dot product of two vectors
-int LSHCosine::dotProduct(const vector<float>& emb1, const vector<float>& emb2) const{
-    if (emb1.size() != emb2.size()) {
-        throw std::invalid_argument("size of both vectors must be equal");
-    }
-    float ans = 0;
-    for (size_t i=0; i<emb1.size(); i++){
-        ans += emb1[i] * emb2[i];
-    }
-    return (ans > 0);
-}
-
 // Method to compute signature for a given embedding
 vector<vector<int>> LSHCosine::computeSignature(const vector<float>& embedding) const {
     vector<vector<int>> signature(numBands, vector<int>(numBits));
     for (size_t i = 0; i < numBands; ++i) {
         for (size_t j = 0; j < numBits; ++j) {
-            signature[i][j] = dotProduct(embedding, hashFunctions[i][j]);
+            signature[i][j] = utility::dotProduct(embedding, hashFunctions[i][j]);
         }
     }
     return signature;
@@ -452,24 +440,13 @@ LSHEuclidean::LSHEuclidean(size_t nBits, size_t nBands, size_t bWidth, shared_pt
     }
 }
 
-// Utility function to calculate dot product of two vectors
-float LSHEuclidean::dotProduct(const vector<float>& emb1, const vector<float>& emb2) const{
-    if (emb1.size() != emb2.size()) {
-        throw std::invalid_argument("size of both vectors must be equal");
-    }
-    float ans = 0;
-    for (size_t i=0; i<emb1.size(); i++){
-        ans += emb1[i] * emb2[i];
-    }
-    return ans;
-}
 
 // Method to compute signature for a given embedding
 vector<vector<int>> LSHEuclidean::computeSignature(const vector<float>& embedding) const {
     vector<vector<int>> signature(numBands, vector<int>(numBits));
     for (size_t i = 0; i < numBands; ++i) {
         for (size_t j = 0; j < numBits; ++j) {
-            signature[i][j] = (dotProduct(embedding, hashFunctions[i][j]) + offsets[i][j]) / bucketWidth;
+            signature[i][j] = (utility::dotProduct(embedding, hashFunctions[i][j]) + offsets[i][j]) / bucketWidth;
         }
     }
     return signature;
