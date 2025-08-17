@@ -22,11 +22,15 @@ Ask: “What is this system supposed to do really well?”
         b. Storage Module
 
     Phase 3:
-        a. LSH
-        b. Annoy
-        c. HNSW
+        LSH
 
     Phase 4:
+        Annoy
+    
+    Phase 5:
+        HNSW
+
+    Phase 6:
         a. Python Binding 
         b. Complete unit testing
         c. Testing on millions of data

@@ -2,7 +2,7 @@
 
 int main() {
     cout << "starting test\n";
-    auto col = make_shared<Collection>(1);
+    auto col = make_shared<Collection>(3);
     auto sim = make_shared<EuclideanSimilarity>();
     auto ind = make_shared<FlatIndex>(col, sim);
     vector_store store(ind, col);
@@ -38,12 +38,12 @@ int main() {
     vector<size_t> ids = store.insert(docs);
     // for (int i=0; i<10; i++) cout << ids[i] << ' ';
     cout << '\n';
-    vector<float> emb = {1.0, 1.0, 1.0};
-    // vector<std::pair<float, Document>> res1 = store.searchWithScores(emb, 5);
-    // for (auto& it: res1) {
-    //     cout << "Score: " << it.first << " ";
-    //     it.second.printDocument();
-    // }
+    vector<float> emb = {1.1, 1.5, 2.3};
+    vector<std::pair<float, Document>> res1 = store.searchWithScores(emb, 5);
+    for (auto& it: res1) {
+        cout << "Score: " << it.first << " ";
+        it.second.printDocument();
+    }
     // cout << "searching with metadata1\n";
     // vector<std::pair<float, Document>> res2 = store.searchWithScores(meta1, emb, 5);
     // for (auto& it: res2) {
@@ -62,9 +62,9 @@ int main() {
     // for (auto& it: res4) {
     //     it.printDocument();
     // }
-    int i = 20;
-    store.fetchDocument(i).printDocument();
-    cout << store.fetchId(store.fetchDocument(i)) << '\n';
+    // int i = 20;
+    // store.fetchDocument(i).printDocument();
+    // cout << store.fetchId(store.fetchDocument(i)) << '\n';
 
     return 0;
 }

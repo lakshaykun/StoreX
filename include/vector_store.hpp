@@ -12,7 +12,7 @@ private:
     shared_ptr<Index> index;
 public:
     // Default constructor without persistence
-    vector_store();
+    vector_store(size_t vecSize);
 
     // custom setup constructor
     vector_store(shared_ptr<Index> ind, shared_ptr<Collection> coll);

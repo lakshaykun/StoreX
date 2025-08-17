@@ -1,8 +1,8 @@
 #include "vector_store.hpp"
 
 // Default constructor without persistence
-vector_store::vector_store() 
-    : collection(make_shared<Collection>()), 
+vector_store::vector_store(size_t vecSize) 
+    : collection(make_shared<Collection>(vecSize)), 
     similarity(make_shared<CosineSimilarity>()),
     index(make_shared<FlatIndex>(collection, similarity)) 
     {

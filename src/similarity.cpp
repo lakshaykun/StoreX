@@ -16,7 +16,7 @@ float CosineSimilarity::compute(const vector<float>& emb1, const vector<float>& 
     }
     
     if (normA == 0.0f || normB == 0.0f) {
-        throw invalid_argument("One of the embeddings is zero.");
+        return 0.0f;
     }
     
     return dotProduct / (sqrt(normA) * sqrt(normB));
@@ -47,10 +47,8 @@ float JaccardSimilarity::compute(const vector<float>& emb1, const vector<float>&
     float unionSet = 0.0f;
     
     for (size_t i = 0; i < emb1.size(); ++i) {
-        if (emb1[i] > 0 && emb2[i] > 0) {
-            intersection += std::min(emb1[i], emb2[i]);
-        }
-        unionSet += std::max(emb1[i], emb2[i]);
+        intersection += (emb1[i] != 0) & (emb2[i] != 0);
+        unionSet += (emb1[i] != 0) | (emb2[i] != 0);
     }
     
     if (unionSet == 0.0f) {

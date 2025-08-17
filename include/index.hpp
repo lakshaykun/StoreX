@@ -3,6 +3,7 @@
 #include <vector>
 #include "collection.hpp"
 #include "similarity.hpp"
+#include "lsh.hpp"
 
 using std::shared_ptr;
 using std::make_shared;
@@ -61,4 +62,27 @@ public:
     vector<std::pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
 
     ~FlatIndex() override = default;
+};
+
+class LSHIndex : public Index {
+private:
+    shared_ptr<LSH> lsh; // Pointer to the LSH object for indexing
+public:
+    LSHIndex(shared_ptr<Collection> coll, shared_ptr<Similarity> sim);
+
+    size_t insert(Document& doc) override;
+
+    void update(size_t id, Document& doc) override;
+
+    vector<Document> search(const Metadata& meta, size_t k) const override;
+
+    vector<Document> search(const vector<float>& embedding, size_t k) const override;
+
+    vector<std::pair<float, Document>> searchWithScores(const vector<float>& embedding, size_t k) const override;
+    
+    vector<Document> search(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
+    
+    vector<std::pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
+
+    ~LSHIndex() override = default;
 };
