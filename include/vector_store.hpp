@@ -33,13 +33,13 @@ public:
     vector<Document> search(const vector<float>& embedding, size_t k);
 
     // Method to search for similar documents and their scores by embedding
-    vector<std::pair<float, Document>> searchWithScores(const vector<float>& embedding, size_t k);
+    vector<pair<float, Document>> searchWithScores(const vector<float>& embedding, size_t k);
 
     // Method to search for top k similar documents by embedding with same metadata
     vector<Document> search(const Metadata& meta, const vector<float>& embedding, size_t k);
 
     // Method to search for similar documents and their scores by embedding with same metadata
-    vector<std::pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k);
+    vector<pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k);
 
     // Method to fetch id of a document by metadata
     size_t fetchId(const Metadata& meta);

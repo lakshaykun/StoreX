@@ -34,3 +34,6 @@ Ask: “What is this system supposed to do really well?”
         a. Python Binding 
         b. Complete unit testing
         c. Testing on millions of data
+
+    Phase 7:
+        Threading

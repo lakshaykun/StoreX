@@ -54,6 +54,29 @@ public:
     bool operator==(const Metadata& other) const {
         return data == other.getData();
     }
+
+    // Method to check if this metadata contains all key-value pairs from query metadata
+    bool contains(const Metadata& queryMetadata) const {
+        const json& queryData = queryMetadata.getData();
+        
+        // Iterate through all key-value pairs in the query metadata
+        for (auto it = queryData.begin(); it != queryData.end(); ++it) {
+            const string& key = it.key();
+            const json& queryValue = it.value();
+            
+            // Check if the key exists in this metadata
+            if (data.find(key) == data.end()) {
+                return false;
+            }
+            
+            // Check if the values match
+            if (data[key] != queryValue) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
 };
 
 class Document {
@@ -119,7 +142,25 @@ public:
     bool operator==(const Document& other) const {
         return embedding == other.getEmbedding() && metadata == other.getMetadata();
     }
+    
     bool operator!=(const Document& other) const {
         return !(*this == other);
+    }
+
+    // Method to check if document metadata contains query metadata
+    bool matchesQuery(const Metadata& queryMetadata) const {
+        return metadata.contains(queryMetadata);
+    }
+
+    // Overloaded version that accepts JSON object
+    bool matchesQuery(const json& queryJson) const {
+        Metadata queryMetadata(queryJson);
+        return metadata.contains(queryMetadata);
+    }
+
+    // Overloaded version that accepts JSON string
+    bool matchesQuery(const string& queryJsonString) const {
+        Metadata queryMetadata(queryJsonString);
+        return metadata.contains(queryMetadata);
     }
 };

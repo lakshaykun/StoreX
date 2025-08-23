@@ -45,7 +45,7 @@ vector<Document> LSHIndex::search(const vector<float>& embedding, size_t k) cons
     return lsh->search(embedding, k);
 }
 
-vector<std::pair<float, Document>> LSHIndex::searchWithScores(const vector<float>& embedding, size_t k) const {
+vector<pair<float, Document>> LSHIndex::searchWithScores(const vector<float>& embedding, size_t k) const {
     if (k == 0 || collection->size() == 0) {
         return {};
     }
@@ -60,7 +60,7 @@ vector<Document> LSHIndex::search(const Metadata& meta, const vector<float>& emb
     return lsh->search(meta, embedding, k);
 }
 
-vector<std::pair<float, Document>> LSHIndex::searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const {
+vector<pair<float, Document>> LSHIndex::searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const {
     if (k == 0 || collection->size() == 0) {
         return {};
     }

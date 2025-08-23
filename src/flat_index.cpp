@@ -46,7 +46,7 @@ vector<Document> FlatIndex::search(const vector<float>& embedding, size_t k) con
     }
 
     // Create a vector to store pairs of similarity scores and documents
-    vector<std::pair<float, Document>> results;
+    vector<pair<float, Document>> results;
 
     // Iterate through the collection and compute similarity scores
     for (const auto& doc : collection->getDocuments()) {
@@ -64,13 +64,13 @@ vector<Document> FlatIndex::search(const vector<float>& embedding, size_t k) con
 }
 
 // Method to search for similar documents and their scores by embedding
-vector<std::pair<float, Document>> FlatIndex::searchWithScores(const vector<float>& embedding, size_t k) const {
+vector<pair<float, Document>> FlatIndex::searchWithScores(const vector<float>& embedding, size_t k) const {
     if (k == 0 || collection->size() == 0) {
         return {}; // Return empty vector if k is 0 or collection is empty
     }
 
     // Create a vector to store pairs of similarity scores and documents
-    vector<std::pair<float, Document>> results;
+    vector<pair<float, Document>> results;
 
     // Iterate through the collection and compute similarity scores
     for (const auto& doc : collection->getDocuments()) {
@@ -96,7 +96,7 @@ vector<Document> FlatIndex::search(const Metadata& meta, const vector<float>& em
     }
 
     // Create a vector to store pairs of similarity scores and documents
-    vector<std::pair<float, Document>> results;
+    vector<pair<float, Document>> results;
 
     // Iterate through the collection and compute similarity scores
     for (const auto& doc : collection->getDocuments()) {
@@ -118,8 +118,8 @@ vector<Document> FlatIndex::search(const Metadata& meta, const vector<float>& em
 }
 
 // Method to search for top k similar documents and their scores by embedding with same metadata
-vector<std::pair<float, Document>> FlatIndex::searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const {
-    vector<std::pair<float, Document>> results;
+vector<pair<float, Document>> FlatIndex::searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const {
+    vector<pair<float, Document>> results;
     // Iterate through the collection and find documents matching the metadata
     for (const auto& doc : collection->getDocuments()) {
         if (doc.getMetadata() == meta) {

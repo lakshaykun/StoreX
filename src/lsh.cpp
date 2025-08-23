@@ -89,7 +89,7 @@ vector<Document> LSHJaccard::search(const vector<float>& query, size_t k) const 
     
     // Convert to vector and limit to k results
     vector<size_t> candidates(resultSet.begin(), resultSet.end());
-    vector<std::pair<float, size_t>> scoredDocuments;
+    vector<pair<float, size_t>> scoredDocuments;
     scoredDocuments.reserve(candidates.size());
 
     for (const auto& docId : candidates) {
@@ -111,7 +111,7 @@ vector<Document> LSHJaccard::search(const vector<float>& query, size_t k) const 
 
 
 // Method to search for similar documents and their scores by embedding
-vector<std::pair<float, Document>> LSHJaccard::searchWithScores(const vector<float>& query, size_t k) const {
+vector<pair<float, Document>> LSHJaccard::searchWithScores(const vector<float>& query, size_t k) const {
     vector<int> queryEmbedding = binarize(query);
     vector<int> querySignature = computeSignature(queryEmbedding);
     std::unordered_set<size_t> resultSet;
@@ -128,7 +128,7 @@ vector<std::pair<float, Document>> LSHJaccard::searchWithScores(const vector<flo
     
     // Convert to vector and limit to k results
     vector<size_t> candidates(resultSet.begin(), resultSet.end());
-    vector<std::pair<float, size_t>> scoredDocuments;
+    vector<pair<float, size_t>> scoredDocuments;
     scoredDocuments.reserve(candidates.size());
 
     for (const auto& docId : candidates) {
@@ -140,7 +140,7 @@ vector<std::pair<float, Document>> LSHJaccard::searchWithScores(const vector<flo
                 [](const auto& a, const auto& b) { return a.first > b.first; });
 
     // Extract the top k document IDs and their scores
-    vector<std::pair<float, Document>> results;
+    vector<pair<float, Document>> results;
     results.reserve(k);
     for (size_t i = 0; i < k; ++i) {
         Document doc = collection->getDocument(scoredDocuments[i].second);
@@ -168,7 +168,7 @@ vector<Document> LSHJaccard::search(const Metadata& meta, const vector<float>& q
     
     // Convert to vector and limit to k results
     vector<size_t> candidates(resultSet.begin(), resultSet.end());
-    vector<std::pair<float, size_t>> scoredDocuments;
+    vector<pair<float, size_t>> scoredDocuments;
 
     for (const auto& docId : candidates) {
         if (collection->getDocument(docId).getMetadata() == meta) {
@@ -190,7 +190,7 @@ vector<Document> LSHJaccard::search(const Metadata& meta, const vector<float>& q
 }
 
 // Method to search for similar documents and their scores by embedding with same metadata
-vector<std::pair<float, Document>> LSHJaccard::searchWithScores(const Metadata& meta, const vector<float>& query, size_t k) const {
+vector<pair<float, Document>> LSHJaccard::searchWithScores(const Metadata& meta, const vector<float>& query, size_t k) const {
     vector<int> queryEmbedding = binarize(query);
     vector<int> querySignature = computeSignature(queryEmbedding);
     std::unordered_set<size_t> resultSet;
@@ -207,7 +207,7 @@ vector<std::pair<float, Document>> LSHJaccard::searchWithScores(const Metadata& 
     
     // Convert to vector and limit to k results
     vector<size_t> candidates(resultSet.begin(), resultSet.end());
-    vector<std::pair<float, size_t>> scoredDocuments;
+    vector<pair<float, size_t>> scoredDocuments;
 
     for (const auto& docId : candidates) {
         if (collection->getDocument(docId).getMetadata() == meta) {
@@ -220,7 +220,7 @@ vector<std::pair<float, Document>> LSHJaccard::searchWithScores(const Metadata& 
                 [](const auto& a, const auto& b) { return a.first > b.first; });
 
     // Extract the top k document IDs and their scores
-    vector<std::pair<float, Document>> results;
+    vector<pair<float, Document>> results;
     results.reserve(k);
     for (size_t i = 0; i < k; ++i) {
         Document doc = collection->getDocument(scoredDocuments[i].second);
@@ -301,7 +301,7 @@ vector<Document> LSHCosine::search(const vector<float>& query, size_t k) const {
         }
     }
     vector<size_t> candidates(candidateSet.begin(), candidateSet.end());
-    vector<std::pair<float, size_t>> scoredDocs;
+    vector<pair<float, size_t>> scoredDocs;
     for (auto& docId: candidates){
         scoredDocs.emplace_back(similarity->compute(query, collection->getDocument(docId).getEmbedding()), docId);
     }
@@ -320,7 +320,7 @@ vector<Document> LSHCosine::search(const vector<float>& query, size_t k) const {
 
 
 // Method to search for similar documents and their scores by embedding
-vector<std::pair<float, Document>> LSHCosine::searchWithScores(const vector<float>& query, size_t k) const {
+vector<pair<float, Document>> LSHCosine::searchWithScores(const vector<float>& query, size_t k) const {
     std::unordered_set<size_t> candidateSet;
     vector<vector<int>> querySign = computeSignature(query);
     for (size_t band = 0; band < numBands; band++){
@@ -330,7 +330,7 @@ vector<std::pair<float, Document>> LSHCosine::searchWithScores(const vector<floa
         }
     }
     vector<size_t> candidates(candidateSet.begin(), candidateSet.end());
-    vector<std::pair<float, size_t>> scoredDocs;
+    vector<pair<float, size_t>> scoredDocs;
     for (auto& docId: candidates){
         scoredDocs.emplace_back(similarity->compute(query, collection->getDocument(docId).getEmbedding()), docId);
     }
@@ -340,7 +340,7 @@ vector<std::pair<float, Document>> LSHCosine::searchWithScores(const vector<floa
     std::partial_sort(scoredDocs.begin(), scoredDocs.begin() + k, scoredDocs.end(), 
                     [](const auto& a, const auto& b) { return a.first > b.first; });
     
-    vector<std::pair<float, Document>> res(k);
+    vector<pair<float, Document>> res(k);
     for (size_t i=0; i<k; i++){
         res[i].first = scoredDocs[i].first;
         res[i].second = collection->getDocument(scoredDocs[i].second);
@@ -359,7 +359,7 @@ vector<Document> LSHCosine::search(const Metadata& meta, const vector<float>& qu
         }
     }
     vector<size_t> candidates(candidateSet.begin(), candidateSet.end());
-    vector<std::pair<float, size_t>> scoredDocs;
+    vector<pair<float, size_t>> scoredDocs;
     for (auto& docId: candidates){
         if (collection->getDocument(docId).getMetadata() == meta){
             scoredDocs.emplace_back(similarity->compute(query, collection->getDocument(docId).getEmbedding()), docId);
@@ -379,7 +379,7 @@ vector<Document> LSHCosine::search(const Metadata& meta, const vector<float>& qu
 }
 
 // Method to search for similar documents and their scores by embedding with same metadata
-vector<std::pair<float, Document>> LSHCosine::searchWithScores(const Metadata& meta, const vector<float>& query, size_t k) const {
+vector<pair<float, Document>> LSHCosine::searchWithScores(const Metadata& meta, const vector<float>& query, size_t k) const {
     std::unordered_set<size_t> candidateSet;
     vector<vector<int>> querySign = computeSignature(query);
     for (size_t band = 0; band < numBands; band++){
@@ -389,7 +389,7 @@ vector<std::pair<float, Document>> LSHCosine::searchWithScores(const Metadata& m
         }
     }
     vector<size_t> candidates(candidateSet.begin(), candidateSet.end());
-    vector<std::pair<float, size_t>> scoredDocs;
+    vector<pair<float, size_t>> scoredDocs;
     for (auto& docId: candidates){
         if (collection->getDocument(docId).getMetadata() == meta){
             scoredDocs.emplace_back(similarity->compute(query, collection->getDocument(docId).getEmbedding()), docId);
@@ -401,7 +401,7 @@ vector<std::pair<float, Document>> LSHCosine::searchWithScores(const Metadata& m
     std::partial_sort(scoredDocs.begin(), scoredDocs.begin() + k, scoredDocs.end(), 
                     [](const auto& a, const auto& b) { return a.first > b.first; });
     
-    vector<std::pair<float, Document>> res(k);
+    vector<pair<float, Document>> res(k);
     for (size_t i=0; i<k; i++){
         res[i].first = scoredDocs[i].first;
         res[i].second = collection->getDocument(scoredDocs[i].second);
@@ -480,7 +480,7 @@ vector<Document> LSHEuclidean::search(const vector<float>& query, size_t k) cons
         }
     }
     vector<size_t> candidates(candidateSet.begin(), candidateSet.end());
-    vector<std::pair<float, size_t>> scoredDocs;
+    vector<pair<float, size_t>> scoredDocs;
     for (auto& docId: candidates){
         scoredDocs.emplace_back(similarity->compute(query, collection->getDocument(docId).getEmbedding()), docId);
     }
@@ -499,7 +499,7 @@ vector<Document> LSHEuclidean::search(const vector<float>& query, size_t k) cons
 
 
 // Method to search for similar documents and their scores by embedding
-vector<std::pair<float, Document>> LSHEuclidean::searchWithScores(const vector<float>& query, size_t k) const {
+vector<pair<float, Document>> LSHEuclidean::searchWithScores(const vector<float>& query, size_t k) const {
     std::unordered_set<size_t> candidateSet;
     vector<vector<int>> querySign = computeSignature(query);
     for (size_t band = 0; band < numBands; band++){
@@ -509,7 +509,7 @@ vector<std::pair<float, Document>> LSHEuclidean::searchWithScores(const vector<f
         }
     }
     vector<size_t> candidates(candidateSet.begin(), candidateSet.end());
-    vector<std::pair<float, size_t>> scoredDocs;
+    vector<pair<float, size_t>> scoredDocs;
     for (auto& docId: candidates){
         scoredDocs.emplace_back(similarity->compute(query, collection->getDocument(docId).getEmbedding()), docId);
     }
@@ -519,7 +519,7 @@ vector<std::pair<float, Document>> LSHEuclidean::searchWithScores(const vector<f
     std::partial_sort(scoredDocs.begin(), scoredDocs.begin() + k, scoredDocs.end(), 
                     [](const auto& a, const auto& b) { return a.first > b.first; });
     
-    vector<std::pair<float, Document>> res(k);
+    vector<pair<float, Document>> res(k);
     for (size_t i=0; i<k; i++){
         res[i].first = scoredDocs[i].first;
         res[i].second = collection->getDocument(scoredDocs[i].second);
@@ -538,7 +538,7 @@ vector<Document> LSHEuclidean::search(const Metadata& meta, const vector<float>&
         }
     }
     vector<size_t> candidates(candidateSet.begin(), candidateSet.end());
-    vector<std::pair<float, size_t>> scoredDocs;
+    vector<pair<float, size_t>> scoredDocs;
     for (auto& docId: candidates){
         if (collection->getDocument(docId).getMetadata() == meta){
             scoredDocs.emplace_back(similarity->compute(query, collection->getDocument(docId).getEmbedding()), docId);
@@ -558,7 +558,7 @@ vector<Document> LSHEuclidean::search(const Metadata& meta, const vector<float>&
 }
 
 // Method to search for similar documents and their scores by embedding with same metadata
-vector<std::pair<float, Document>> LSHEuclidean::searchWithScores(const Metadata& meta, const vector<float>& query, size_t k) const {
+vector<pair<float, Document>> LSHEuclidean::searchWithScores(const Metadata& meta, const vector<float>& query, size_t k) const {
     std::unordered_set<size_t> candidateSet;
     vector<vector<int>> querySign = computeSignature(query);
     for (size_t band = 0; band < numBands; band++){
@@ -568,7 +568,7 @@ vector<std::pair<float, Document>> LSHEuclidean::searchWithScores(const Metadata
         }
     }
     vector<size_t> candidates(candidateSet.begin(), candidateSet.end());
-    vector<std::pair<float, size_t>> scoredDocs;
+    vector<pair<float, size_t>> scoredDocs;
     for (auto& docId: candidates){
         if (collection->getDocument(docId).getMetadata() == meta){
             scoredDocs.emplace_back(similarity->compute(query, collection->getDocument(docId).getEmbedding()), docId);
@@ -580,7 +580,7 @@ vector<std::pair<float, Document>> LSHEuclidean::searchWithScores(const Metadata
     std::partial_sort(scoredDocs.begin(), scoredDocs.begin() + k, scoredDocs.end(), 
                     [](const auto& a, const auto& b) { return a.first > b.first; });
     
-    vector<std::pair<float, Document>> res(k);
+    vector<pair<float, Document>> res(k);
     for (size_t i=0; i<k; i++){
         res[i].first = scoredDocs[i].first;
         res[i].second = collection->getDocument(scoredDocs[i].second);

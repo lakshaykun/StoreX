@@ -13,12 +13,14 @@ MAIN_OBJ = $(OBJ_DIR)/main.o
 SRC_OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC_FILES))
 TEST_OBJ = $(OBJ_DIR)/unit_tests.o
 ADVANCED_TEST_OBJ = $(OBJ_DIR)/advanced_tests.o
+HNSW_TEST_OBJ = $(OBJ_DIR)/hnsw_tests.o
 
 MAIN_TARGET = $(BIN_DIR)/main
 TEST_TARGET = $(BIN_DIR)/tests
 ADVANCED_TEST_TARGET = $(BIN_DIR)/advanced_tests
+HNSW_TEST_TARGET = $(BIN_DIR)/hnsw_tests
 
-all: $(MAIN_TARGET) $(TEST_TARGET) $(ADVANCED_TEST_TARGET)
+all: $(MAIN_TARGET) $(TEST_TARGET) $(ADVANCED_TEST_TARGET) $(HNSW_TEST_TARGET)
 
 # Main executable
 $(MAIN_TARGET): $(MAIN_OBJ) $(SRC_OBJS)
@@ -32,6 +34,11 @@ $(TEST_TARGET): $(TEST_OBJ) $(SRC_OBJS)
 
 # Advanced test executable
 $(ADVANCED_TEST_TARGET): $(ADVANCED_TEST_OBJ) $(SRC_OBJS)
+	@mkdir -p $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
+# HNSW test executable
+$(HNSW_TEST_TARGET): $(HNSW_TEST_OBJ) $(SRC_OBJS)
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
@@ -50,6 +57,11 @@ $(OBJ_DIR)/advanced_tests.o: $(TEST_DIR)/advanced_tests.cpp
 	@mkdir -p $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# Compile hnsw_tests.cpp
+$(OBJ_DIR)/hnsw_tests.o: $(TEST_DIR)/hnsw_tests.cpp
+	@mkdir -p $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 # Compile all src/*.cpp
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(INC_DIR)/*.hpp
 	@mkdir -p $(OBJ_DIR)
@@ -60,6 +72,9 @@ clean:
 
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)
+
+hnsw-test: $(HNSW_TEST_TARGET)
+	./$(HNSW_TEST_TARGET)
 
 run: $(MAIN_TARGET)
 	./$(MAIN_TARGET)

@@ -10,6 +10,9 @@ using std::shared_ptr;
 using std::make_shared;
 using std::unique_ptr;
 using std::vector;
+using std::pair;
+using std::unordered_map;
+using std::unordered_set;
 
 static thread_local std::mt19937 rng{std::random_device{}()};
 
@@ -39,13 +42,13 @@ public:
     virtual vector<Document> search(const vector<float>& embedding, size_t k) const = 0;
 
     // Method to search for similar documents and their scores by embedding
-    virtual vector<std::pair<float, Document>> searchWithScores(const vector<float>& embedding, size_t k) const = 0;
+    virtual vector<pair<float, Document>> searchWithScores(const vector<float>& embedding, size_t k) const = 0;
 
     // Method to search for top k similar documents by embedding with same metadata
     virtual vector<Document> search(const Metadata& meta, const vector<float>& embedding, size_t k) const = 0;
 
     // Method to search for similar documents and their scores by embedding with same metadata
-    virtual vector<std::pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const = 0;
+    virtual vector<pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const = 0;
 };
 
 class FlatIndex : public Index {
@@ -60,11 +63,11 @@ public:
 
     vector<Document> search(const vector<float>& embedding, size_t k) const override;
 
-    vector<std::pair<float, Document>> searchWithScores(const vector<float>& embedding, size_t k) const override;
+    vector<pair<float, Document>> searchWithScores(const vector<float>& embedding, size_t k) const override;
 
     vector<Document> search(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
 
-    vector<std::pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
+    vector<pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
 
     ~FlatIndex() override = default;
 };
@@ -83,11 +86,11 @@ public:
 
     vector<Document> search(const vector<float>& embedding, size_t k) const override;
 
-    vector<std::pair<float, Document>> searchWithScores(const vector<float>& embedding, size_t k) const override;
+    vector<pair<float, Document>> searchWithScores(const vector<float>& embedding, size_t k) const override;
     
     vector<Document> search(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
     
-    vector<std::pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
+    vector<pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
 
     ~LSHIndex() override = default;
 };
@@ -130,11 +133,68 @@ public:
 
     vector<Document> search(const vector<float>& embedding, size_t k) const override;
 
-    vector<std::pair<float, Document>> searchWithScores(const vector<float>& embedding, size_t k) const override;
+    vector<pair<float, Document>> searchWithScores(const vector<float>& embedding, size_t k) const override;
     
     vector<Document> search(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
     
-    vector<std::pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
+    vector<pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
 
     ~AnnoyIndex() override = default;
+};
+
+class HNSWIndex : public Index {
+private:
+    vector<std::unordered_map<size_t, std::unordered_set<size_t>>> adj;   // adj[level][node] -> neighbours
+    size_t M = 16;
+    size_t mL = 1 / log(M);
+    size_t Mmax0 = 2 * M;
+    size_t maxPossibleLevel = 10;
+    size_t efConstruction = 200;
+    size_t efSearch = 100;
+    size_t entryPoint = -1;
+    size_t maxLevel = -1;
+    // Method to generate a random level for a new node
+    size_t randomLevel();
+
+    // Method to perform greedy descent search
+    size_t greedyDescent(size_t level, const vector<float>& emb) const;
+
+    // Search for candidates in a layer
+    vector<size_t> searchLayer(size_t ep, size_t level, const vector<float>& emb) const;
+
+    // Method to select maxDeg neighbors from candidates
+    vector<size_t> selectNeighbors(const vector<size_t>& candidates, size_t maxDeg, const vector<float>& emb) const;
+
+    // Method to prune neighbors to maintain maxDeg
+    void pruneNeighbors(size_t layer, size_t node, size_t maxDeg);
+
+    // Method to find the closest candidate to emb
+    size_t closestCandidate(const vector<size_t>& candidates, const vector<float>& emb) const;
+
+    // Method to insert a new node into the HNSW graph
+    void insertHNSW(size_t docId, Document& doc);
+
+    // Method to search KNN Documents in HNSW graph using a document
+    vector<pair<float, Document>> searchHNSW(const Document& doc, size_t k) const;
+
+    void updateHNSW(size_t id, Document& doc);
+
+public:
+    HNSWIndex(shared_ptr<Collection> coll, shared_ptr<Similarity> sim);
+
+    size_t insert(Document& doc) override;
+
+    void update(size_t id, Document& doc) override;
+
+    vector<Document> search(const Metadata& meta, size_t k) const override;
+
+    vector<Document> search(const vector<float>& embedding, size_t k) const override;
+
+    vector<pair<float, Document>> searchWithScores(const vector<float>& embedding, size_t k) const override;
+
+    vector<Document> search(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
+
+    vector<pair<float, Document>> searchWithScores(const Metadata& meta, const vector<float>& embedding, size_t k) const override;
+
+    ~HNSWIndex() override = default;
 };

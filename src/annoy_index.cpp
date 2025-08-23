@@ -146,7 +146,7 @@ vector<Document> AnnoyIndex::search(const vector<float>& query, size_t k) const 
         searchTree(root, query, candidatesSet);
     }
     vector<size_t> candidates(candidatesSet.begin(), candidatesSet.end());
-    vector<std::pair<float, size_t>> scoredDocs;
+    vector<pair<float, size_t>> scoredDocs;
     for (auto& docId: candidates){
         scoredDocs.emplace_back(similarity->compute(query, collection->getDocument(docId).getEmbedding()), docId);
     }
@@ -165,13 +165,13 @@ vector<Document> AnnoyIndex::search(const vector<float>& query, size_t k) const 
 
 
 // Method to search for similar documents and their scores by embedding
-vector<std::pair<float, Document>> AnnoyIndex::searchWithScores(const vector<float>& query, size_t k) const {
+vector<pair<float, Document>> AnnoyIndex::searchWithScores(const vector<float>& query, size_t k) const {
     std::unordered_set<size_t> candidatesSet;
     for (auto& root: forest){
         searchTree(root, query, candidatesSet);
     }
     vector<size_t> candidates(candidatesSet.begin(), candidatesSet.end());
-    vector<std::pair<float, size_t>> scoredDocs;
+    vector<pair<float, size_t>> scoredDocs;
     for (auto& docId: candidates){
         scoredDocs.emplace_back(similarity->compute(query, collection->getDocument(docId).getEmbedding()), docId);
     }
@@ -181,7 +181,7 @@ vector<std::pair<float, Document>> AnnoyIndex::searchWithScores(const vector<flo
     std::partial_sort(scoredDocs.begin(), scoredDocs.begin() + k, scoredDocs.end(), 
                     [](const auto& a, const auto& b) { return a.first > b.first; });
     
-    vector<std::pair<float, Document>> res(k);
+    vector<pair<float, Document>> res(k);
     for (size_t i=0; i<k; i++){
         res[i].first = scoredDocs[i].first;
         res[i].second = collection->getDocument(scoredDocs[i].second);
@@ -196,7 +196,7 @@ vector<Document> AnnoyIndex::search(const Metadata& meta, const vector<float>& q
         searchTree(root, query, candidatesSet);
     }
     vector<size_t> candidates(candidatesSet.begin(), candidatesSet.end());
-    vector<std::pair<float, size_t>> scoredDocs;
+    vector<pair<float, size_t>> scoredDocs;
     for (auto& docId: candidates){
         if (collection->getDocument(docId).getMetadata() == meta){
             scoredDocs.emplace_back(similarity->compute(query, collection->getDocument(docId).getEmbedding()), docId);
@@ -216,13 +216,13 @@ vector<Document> AnnoyIndex::search(const Metadata& meta, const vector<float>& q
 }
 
 // Method to search for similar documents and their scores by embedding with same metadata
-vector<std::pair<float, Document>> AnnoyIndex::searchWithScores(const Metadata& meta, const vector<float>& query, size_t k) const {
+vector<pair<float, Document>> AnnoyIndex::searchWithScores(const Metadata& meta, const vector<float>& query, size_t k) const {
     std::unordered_set<size_t> candidatesSet;
     for (auto& root: forest){
         searchTree(root, query, candidatesSet);
     }
     vector<size_t> candidates(candidatesSet.begin(), candidatesSet.end());
-    vector<std::pair<float, size_t>> scoredDocs;
+    vector<pair<float, size_t>> scoredDocs;
     for (auto& docId: candidates){
         if (collection->getDocument(docId).getMetadata() == meta){
             scoredDocs.emplace_back(similarity->compute(query, collection->getDocument(docId).getEmbedding()), docId);
@@ -234,7 +234,7 @@ vector<std::pair<float, Document>> AnnoyIndex::searchWithScores(const Metadata& 
     std::partial_sort(scoredDocs.begin(), scoredDocs.begin() + k, scoredDocs.end(), 
                     [](const auto& a, const auto& b) { return a.first > b.first; });
     
-    vector<std::pair<float, Document>> res(k);
+    vector<pair<float, Document>> res(k);
     for (size_t i=0; i<k; i++){
         res[i].first = scoredDocs[i].first;
         res[i].second = collection->getDocument(scoredDocs[i].second);
