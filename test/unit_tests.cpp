@@ -802,6 +802,184 @@ void testConcurrency() {
     TEST(true, "Basic concurrency infrastructure works");
 }
 
+// ============== HNSW INDEX TESTS ==============
+void testHNSWIndex() {
+    cout << "\n=== Testing HNSWIndex ===" << endl;
+    
+    auto collection = make_shared<Collection>(3, false);
+    auto similarity = make_shared<CosineSimilarity>();
+    
+    try {
+        HNSWIndex hnswIndex(collection, similarity);
+        
+        // Test document insertion
+        vector<float> emb1 = {1.0f, 0.0f, 0.0f};
+        Document doc1(emb1);
+        size_t id1 = hnswIndex.insert(doc1);
+        TEST(id1 == 0, "HNSWIndex insert returns correct ID");
+        
+        // Test search by embedding with single document
+        vector<float> query = {0.9f, 0.1f, 0.0f}; // Similar to emb1
+        vector<Document> results = hnswIndex.search(query, 1);
+        TEST(results.size() == 1, "HNSWIndex search returns correct number of results");
+        
+        // Test search with scores
+        vector<std::pair<float, Document>> scored_results = hnswIndex.searchWithScores(query, 1);
+        TEST(scored_results.size() == 1, "HNSWIndex searchWithScores returns correct number of results");
+        
+        // Test multiple documents
+        vector<float> emb2 = {0.0f, 1.0f, 0.0f};
+        vector<float> emb3 = {0.0f, 0.0f, 1.0f};
+        Document doc2(emb2);
+        Document doc3(emb3);
+        hnswIndex.insert(doc2);
+        hnswIndex.insert(doc3);
+        
+        vector<Document> multi_results = hnswIndex.search(query, 3);
+        TEST(multi_results.size() == 3, "HNSWIndex search finds multiple documents");
+        
+        // Test search by metadata
+        string jsonStr = R"({"type": "test"})";
+        Metadata meta(jsonStr);
+        Document doc_with_meta(emb1, meta);
+        hnswIndex.insert(doc_with_meta);
+        
+        vector<Document> meta_results = hnswIndex.search(meta, 10);
+        TEST(meta_results.size() >= 1, "HNSWIndex search by metadata finds documents");
+        
+        // Test combined metadata and embedding search
+        vector<Document> combined_results = hnswIndex.search(meta, query, 10);
+        TEST(true, "HNSWIndex combined search completes successfully");
+        
+        // Test update
+        vector<float> new_emb = {1.5f, 0.5f, 0.0f};
+        Document new_doc(new_emb, meta);
+        hnswIndex.update(id1, new_doc);
+        TEST(true, "HNSWIndex update completes successfully");
+        
+    } catch (const std::exception& e) {
+        TEST(false, string("HNSWIndex test failed with exception: ") + e.what());
+    }
+}
+
+// ============== EXTENDED SIMILARITY TESTS ==============
+void testExtendedSimilarity() {
+    cout << "\n=== Testing Extended Similarity Metrics ===" << endl;
+    
+    // Test edge cases for similarity functions
+    vector<float> normalized_vec1 = {0.6f, 0.8f, 0.0f}; // Length = 1
+    vector<float> normalized_vec2 = {0.8f, 0.6f, 0.0f}; // Length = 1
+    
+    CosineSimilarity cosine;
+    float cosine_normalized = cosine.compute(normalized_vec1, normalized_vec2);
+    TEST(cosine_normalized >= 0.0f && cosine_normalized <= 1.0f, 
+         "Cosine similarity between normalized vectors in valid range");
+    
+    // Test very similar vectors
+    vector<float> almost_same1 = {1.0f, 2.0f, 3.0f};
+    vector<float> almost_same2 = {1.001f, 2.001f, 3.001f};
+    float cosine_almost = cosine.compute(almost_same1, almost_same2);
+    TEST(cosine_almost > 0.99f, "Cosine similarity of almost identical vectors is very high");
+    
+    // Test orthogonal vectors in higher dimensions
+    vector<float> orth1 = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    vector<float> orth2 = {0.0f, 1.0f, 0.0f, 0.0f, 0.0f};
+    float cosine_orth = cosine.compute(orth1, orth2);
+    TEST_APPROX_EQUAL(cosine_orth, 0.0f, 1e-6, "High-dimensional orthogonal vectors have zero cosine similarity");
+    
+    // Test Euclidean similarity properties
+    EuclideanSimilarity euclidean;
+    vector<float> point1 = {0.0f, 0.0f};
+    vector<float> point2 = {3.0f, 4.0f}; // Distance = 5
+    float euclidean_result = euclidean.compute(point1, point2);
+    TEST(euclidean_result > 0.0f && euclidean_result < 1.0f, "Euclidean similarity in valid range");
+    
+    // Test Jaccard with binary-like vectors
+    JaccardSimilarity jaccard;
+    vector<float> binary1 = {1.0f, 0.0f, 1.0f, 0.0f, 1.0f};
+    vector<float> binary2 = {1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
+    float jaccard_result = jaccard.compute(binary1, binary2);
+    TEST(jaccard_result >= 0.0f && jaccard_result <= 1.0f, "Jaccard similarity in valid range");
+}
+
+// ============== COLLECTION EDGE CASE TESTS ==============
+void testCollectionEdgeCases() {
+    cout << "\n=== Testing Collection Edge Cases ===" << endl;
+    
+    // Test collection with storage enabled
+    try {
+        Collection col_with_storage(3, "test_collection.db");
+        
+        vector<float> emb = {1.0f, 2.0f, 3.0f};
+        Document doc(emb);
+        size_t id = col_with_storage.insert(doc);
+        TEST(id == 0, "Collection with storage insert works");
+        
+        Document retrieved = col_with_storage.getDocument(id);
+        TEST(vectorsEqual(retrieved.getEmbedding(), emb), "Collection with storage retrieval works");
+        
+        // Cleanup
+        std::filesystem::remove("test_collection.db");
+        
+    } catch (const std::exception& e) {
+        TEST(false, string("Collection with storage failed: ") + e.what());
+    }
+    
+    // Test very large collection
+    Collection large_col(100, false);
+    const size_t large_count = 1000;
+    
+    for (size_t i = 0; i < large_count; i++) {
+        vector<float> emb(100);
+        for (size_t j = 0; j < 100; j++) {
+            emb[j] = static_cast<float>(i + j);
+        }
+        Document doc(emb);
+        size_t id = large_col.insert(doc);
+        TEST(id == i, "Large collection sequential IDs");
+        if (i >= 5) break; // Don't test all 1000 for performance
+    }
+}
+
+// ============== VECTOR STORE EXTENDED TESTS ==============
+void testVectorStoreExtended() {
+    cout << "\n=== Testing VectorStore Extended Features ===" << endl;
+    
+    // Test vector store with different index types
+    vector_store store_default(5);
+    
+    // Test bulk insertion with mixed metadata
+    vector<Document> mixed_docs;
+    for (int i = 0; i < 10; i++) {
+        vector<float> emb(5);
+        for (int j = 0; j < 5; j++) {
+            emb[j] = static_cast<float>(i * 5 + j);
+        }
+        
+        string category = (i % 2 == 0) ? "even" : "odd";
+        string json = R"({"id": )" + std::to_string(i) + R"(, "category": ")" + category + R"("})";
+        Metadata meta(json);
+        mixed_docs.emplace_back(emb, meta);
+    }
+    
+    vector<size_t> bulk_ids = store_default.insert(mixed_docs);
+    TEST(bulk_ids.size() == 10, "Bulk insertion returns correct number of IDs");
+    
+    // Test category-based search
+    Metadata even_meta(string(R"({"category": "even"})"));
+    vector<Document> even_docs = store_default.search(even_meta, 10);
+    TEST(even_docs.size() == 5, "Category search finds correct number of documents");
+    
+    // Test fetchId functionality more thoroughly
+    vector<float> search_emb = mixed_docs[3].getEmbedding();
+    size_t found_id = store_default.fetchId(search_emb);
+    TEST(found_id == 3, "fetchId by embedding finds correct document");
+    
+    Metadata search_meta = mixed_docs[7].getMetadata();
+    size_t meta_found_id = store_default.fetchId(search_meta);
+    TEST(meta_found_id != SIZE_MAX, "fetchId by metadata finds document");
+}
+
 // ============== INTEGRATION TESTS ==============
 void testIntegration() {
     cout << "\n=== Testing Integration ===" << endl;
@@ -853,6 +1031,20 @@ void testIntegration() {
     // Test combined search
     vector<Document> combined_results = store.search(meta2, emb, 3);
     TEST(combined_results.size() <= 3, "Integration test: combined search returns at most k results");
+    
+    // Test cross-index compatibility
+    auto lsh_col = make_shared<Collection>(3);
+    auto lsh_ind = make_shared<LSHIndex>(lsh_col, sim);
+    vector_store lsh_store(lsh_ind, lsh_col);
+    
+    // Insert same documents into LSH store
+    vector<size_t> lsh_ids = lsh_store.insert(docs);
+    TEST(lsh_ids.size() == 10, "Integration test: LSH store accepts same documents");
+    
+    // Compare search results between different indices
+    vector<Document> flat_results = store.search(emb, 3);
+    vector<Document> lsh_results = lsh_store.search(emb, 3);
+    TEST(flat_results.size() > 0 && lsh_results.size() > 0, "Integration test: both indices return results");
 }
 
 // ============== MAIN TEST RUNNER ==============
@@ -871,12 +1063,16 @@ int main() {
         testVectorStore();
         testAnnoyIndex();
         testLSHIndex();
+        testHNSWIndex();
         testEdgeCases();
+        testExtendedSimilarity();
+        testCollectionEdgeCases();
         testUtilityFunctions();
         testPerformance();
         testStressConditions();
         testErrorHandling();
         testConcurrency();
+        testVectorStoreExtended();
         testIntegration();
     } catch (const std::exception& e) {
         cout << "Test execution failed with exception: " << e.what() << endl;

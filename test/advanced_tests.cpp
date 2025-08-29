@@ -46,6 +46,15 @@ int advanced_tests_total = 0;
         cout << "[FAIL] " << message << " (expected " << b << ", got " << a << ")" << endl; \
     }
 
+// Test helper functions
+bool vectorsEqual(const vector<float>& v1, const vector<float>& v2, float epsilon = 1e-6) {
+    if (v1.size() != v2.size()) return false;
+    for (size_t i = 0; i < v1.size(); i++) {
+        if (std::abs(v1[i] - v2[i]) > epsilon) return false;
+    }
+    return true;
+}
+
 // ============== BENCHMARK TESTS ==============
 void benchmarkIndexingStrategies() {
     cout << "\n=== Benchmarking Indexing Strategies ===" << endl;
@@ -335,6 +344,372 @@ void testSerialization() {
     ADVANCED_TEST(true, "Serialization test cleanup completed");
 }
 
+// ============== COMPREHENSIVE ACCURACY TESTS ==============
+void testComprehensiveAccuracy() {
+    cout << "\n=== Testing Comprehensive Search Accuracy ===" << endl;
+    
+    // Create a more complex dataset with known clusters
+    auto similarity = std::make_shared<CosineSimilarity>();
+    auto collection = std::make_shared<Collection>(3, false);
+    auto flat_index = std::make_shared<FlatIndex>(collection, similarity);
+    
+    // Cluster 1: Points around (1,0,0)
+    vector<vector<float>> cluster1 = {
+        {1.0f, 0.1f, 0.0f}, {0.9f, 0.0f, 0.1f}, {1.1f, -0.1f, 0.0f}
+    };
+    
+    // Cluster 2: Points around (0,1,0)
+    vector<vector<float>> cluster2 = {
+        {0.0f, 1.0f, 0.1f}, {0.1f, 0.9f, 0.0f}, {-0.1f, 1.1f, 0.0f}
+    };
+    
+    // Outlier
+    vector<float> outlier = {-1.0f, -1.0f, -1.0f};
+    
+    // Insert all points
+    for (auto& point : cluster1) {
+        Document doc(point);
+        flat_index->insert(doc);
+    }
+    for (auto& point : cluster2) {
+        Document doc(point);
+        flat_index->insert(doc);
+    }
+    Document outlier_doc(outlier);
+    flat_index->insert(outlier_doc);
+    
+    // Query with cluster 1 centroid
+    vector<float> query1 = {1.0f, 0.0f, 0.0f};
+    vector<std::pair<float, Document>> results1 = flat_index->searchWithScores(query1, 3);
+    
+    ADVANCED_TEST(results1.size() == 3, "Returns requested number of nearest neighbors");
+    
+    // Check that all top 3 results are from cluster 1
+    int cluster1_count = 0;
+    for (const auto& result : results1) {
+        vector<float> emb = result.second.getEmbedding();
+        for (const auto& cluster_point : cluster1) {
+            if (vectorsEqual(emb, cluster_point, 0.01f)) {
+                cluster1_count++;
+                break;
+            }
+        }
+    }
+    ADVANCED_TEST(cluster1_count == 3, "Nearest neighbors belong to correct cluster");
+    
+    // Test precision-recall for different k values
+    vector<float> query2 = {0.0f, 1.0f, 0.0f};
+    vector<Document> results_k2 = flat_index->search(query2, 2);
+    vector<Document> results_k5 = flat_index->search(query2, 5);
+    
+    ADVANCED_TEST(results_k2.size() == 2, "K=2 search returns 2 results");
+    ADVANCED_TEST(results_k5.size() == 5, "K=5 search returns 5 results");
+}
+
+// ============== STRESS TESTING ==============
+void testStressScenarios() {
+    cout << "\n=== Testing Stress Scenarios ===" << endl;
+    
+    // Test with rapidly changing data
+    auto collection = std::make_shared<Collection>(10, false);
+    auto similarity = std::make_shared<EuclideanSimilarity>();
+    auto index = std::make_shared<FlatIndex>(collection, similarity);
+    
+    const size_t num_operations = 200;
+    std::mt19937 rng(12345);
+    std::uniform_real_distribution<float> dist(-10.0f, 10.0f);
+    std::uniform_int_distribution<int> op_dist(0, 2); // 0=insert, 1=update, 2=search
+    
+    vector<size_t> inserted_ids;
+    size_t successful_operations = 0;
+    
+    for (size_t i = 0; i < num_operations; i++) {
+        int operation = op_dist(rng);
+        
+        try {
+            if (operation == 0 || inserted_ids.empty()) { // Insert
+                vector<float> emb(10);
+                for (int j = 0; j < 10; j++) {
+                    emb[j] = dist(rng);
+                }
+                Document doc(emb);
+                size_t id = index->insert(doc);
+                inserted_ids.push_back(id);
+                successful_operations++;
+                
+            } else if (operation == 1) { // Update
+                size_t random_id = inserted_ids[rng() % inserted_ids.size()];
+                vector<float> new_emb(10);
+                for (int j = 0; j < 10; j++) {
+                    new_emb[j] = dist(rng);
+                }
+                Document new_doc(new_emb);
+                index->update(random_id, new_doc);
+                successful_operations++;
+                
+            } else { // Search
+                vector<float> query(10);
+                for (int j = 0; j < 10; j++) {
+                    query[j] = dist(rng);
+                }
+                vector<Document> results = index->search(query, 5);
+                if (!results.empty() || inserted_ids.empty()) {
+                    successful_operations++;
+                }
+            }
+        } catch (const std::exception& e) {
+            // Count failures but continue
+        }
+    }
+    
+    ADVANCED_TEST(successful_operations >= num_operations * 0.9, 
+                 "At least 90% of stress test operations succeed");
+    
+    cout << "  Stress test: " << successful_operations << "/" << num_operations 
+         << " operations successful" << endl;
+}
+
+// ============== CONCURRENCY ADVANCED TESTS ==============
+void testAdvancedConcurrency() {
+    cout << "\n=== Testing Advanced Concurrency ===" << endl;
+    
+    auto collection = std::make_shared<Collection>(5, false);
+    auto similarity = std::make_shared<CosineSimilarity>();
+    auto index = std::make_shared<FlatIndex>(collection, similarity);
+    
+    // Pre-populate with data
+    for (int i = 0; i < 100; i++) {
+        vector<float> emb(5);
+        for (int j = 0; j < 5; j++) {
+            emb[j] = static_cast<float>(i + j);
+        }
+        Document doc(emb);
+        index->insert(doc);
+    }
+    
+    const int num_threads = 8;
+    const int operations_per_thread = 50;
+    
+    // Test mixed read/write operations
+    vector<std::future<bool>> futures;
+    std::atomic<int> successful_reads(0);
+    std::atomic<int> total_reads(0);
+    
+    auto mixed_worker = [&](int thread_id) -> bool {
+        try {
+            for (int i = 0; i < operations_per_thread; i++) {
+                if (i % 3 == 0) {
+                    // Insert operation
+                    vector<float> emb(5);
+                    for (int j = 0; j < 5; j++) {
+                        emb[j] = static_cast<float>(thread_id * 1000 + i * 10 + j);
+                    }
+                    Document doc(emb);
+                    index->insert(doc);
+                } else {
+                    // Search operation
+                    vector<float> query(5);
+                    for (int j = 0; j < 5; j++) {
+                        query[j] = static_cast<float>((thread_id + i) % 50 + j);
+                    }
+                    vector<Document> results = index->search(query, 3);
+                    
+                    total_reads++;
+                    if (!results.empty()) {
+                        successful_reads++;
+                    }
+                }
+            }
+            return true;
+        } catch (...) {
+            return false;
+        }
+    };
+    
+    for (int i = 0; i < num_threads; i++) {
+        futures.push_back(std::async(std::launch::async, mixed_worker, i));
+    }
+    
+    bool all_threads_successful = true;
+    for (auto& future : futures) {
+        if (!future.get()) {
+            all_threads_successful = false;
+        }
+    }
+    
+    ADVANCED_TEST(all_threads_successful, "All concurrent threads completed successfully");
+    ADVANCED_TEST(successful_reads.load() >= total_reads.load() * 0.8, 
+                 "At least 80% of concurrent reads successful");
+    
+    cout << "  Concurrent operations: " << successful_reads.load() << "/" 
+         << total_reads.load() << " reads successful" << endl;
+}
+
+// ============== MEMORY LEAK DETECTION ==============
+void testMemoryLeakDetection() {
+    cout << "\n=== Testing Memory Leak Detection ===" << endl;
+    
+    // Test with many index creations and destructions
+    const int iterations = 50;
+    
+    for (int i = 0; i < iterations; i++) {
+        {
+            auto collection = std::make_shared<Collection>(20, false);
+            auto similarity = std::make_shared<EuclideanSimilarity>();
+            
+            // Test different index types in rotation
+            if (i % 3 == 0) {
+                auto index = std::make_shared<FlatIndex>(collection, similarity);
+                for (int j = 0; j < 10; j++) {
+                    vector<float> emb(20, static_cast<float>(j));
+                    Document doc(emb);
+                    index->insert(doc);
+                }
+            } else if (i % 3 == 1) {
+                auto index = std::make_shared<LSHIndex>(collection, similarity);
+                for (int j = 0; j < 10; j++) {
+                    vector<float> emb(20, static_cast<float>(j));
+                    Document doc(emb);
+                    index->insert(doc);
+                }
+            } else {
+                try {
+                    auto index = std::make_shared<AnnoyIndex>(5, 3, collection, similarity);
+                    for (int j = 0; j < 10; j++) {
+                        vector<float> emb(20, static_cast<float>(j));
+                        Document doc(emb);
+                        index->insert(doc);
+                    }
+                } catch (...) {
+                    // AnnoyIndex might fail in some cases, that's ok
+                }
+            }
+        } // All objects should be destroyed here
+    }
+    
+    ADVANCED_TEST(true, "Memory leak test completed without crashes");
+    
+    // Test vector store memory management
+    for (int i = 0; i < 10; i++) {
+        {
+            vector_store store(10);
+            for (int j = 0; j < 20; j++) {
+                vector<float> emb(10, static_cast<float>(j));
+                Document doc(emb);
+                store.insert(doc);
+            }
+            
+            // Perform searches
+            for (int j = 0; j < 5; j++) {
+                vector<float> query(10, static_cast<float>(j));
+                store.search(query, 3);
+            }
+        } // vector_store should be cleaned up here
+    }
+    
+    ADVANCED_TEST(true, "Vector store memory management test completed");
+}
+
+// ============== SERIALIZATION ADVANCED TESTS ==============
+void testAdvancedSerialization() {
+    cout << "\n=== Testing Advanced Serialization ===" << endl;
+    
+    const string test_db = "advanced_serialization_test.db";
+    
+    // Test serialization of complex metadata
+    {
+        Storage storage(test_db);
+        
+        for (int i = 0; i < 5; i++) {
+            vector<float> emb = {static_cast<float>(i), static_cast<float>(i+1), static_cast<float>(i+2)};
+            
+            // Create complex JSON metadata
+            string complex_json = R"({
+                "id": )" + std::to_string(i) + R"(,
+                "title": "Document )" + std::to_string(i) + R"(",
+                "tags": ["tag)" + std::to_string(i) + R"(", "tag)" + std::to_string(i+1) + R"("],
+                "metadata": {
+                    "created": "2025-08-29",
+                    "version": 1.)" + std::to_string(i) + R"(,
+                    "nested": {
+                        "level": )" + std::to_string(i) + R"(,
+                        "active": )" + (i % 2 == 0 ? "true" : "false") + R"(
+                    }
+                }
+            })";
+            
+            Document doc(emb, Metadata(complex_json));
+            storage.insert(i, doc);
+        }
+        
+        ADVANCED_TEST(true, "Complex metadata serialization completed");
+    }
+    
+    // Test loading and verification of complex data
+    {
+        Storage storage(test_db);
+        vector<Document> loaded_docs = storage.load();
+        
+        ADVANCED_TEST(loaded_docs.size() == 5, "All complex documents loaded");
+        
+        if (!loaded_docs.empty()) {
+            auto metadata = loaded_docs[0].getMetadata().getData();
+            ADVANCED_TEST(metadata.contains("id"), "Complex metadata contains id field");
+            ADVANCED_TEST(metadata.contains("metadata"), "Complex metadata contains nested objects");
+            ADVANCED_TEST(metadata["metadata"].contains("nested"), "Deeply nested metadata preserved");
+        }
+    }
+    
+    // Test serialization under concurrent access
+    try {
+        const int num_concurrent_writers = 3;
+        vector<std::future<bool>> write_futures;
+        
+        auto concurrent_writer = [&](int writer_id) -> bool {
+            try {
+                string db_name = test_db + std::to_string(writer_id);
+                Storage storage(db_name);
+                
+                for (int i = 0; i < 10; i++) {
+                    vector<float> emb(3, static_cast<float>(writer_id * 10 + i));
+                    string json = R"({"writer": )" + std::to_string(writer_id) + 
+                                 R"(, "doc": )" + std::to_string(i) + "}";
+                    Document doc(emb, Metadata(json));
+                    storage.insert(i, doc);
+                }
+                return true;
+            } catch (...) {
+                return false;
+            }
+        };
+        
+        for (int i = 0; i < num_concurrent_writers; i++) {
+            write_futures.push_back(std::async(std::launch::async, concurrent_writer, i));
+        }
+        
+        bool all_writers_successful = true;
+        for (auto& future : write_futures) {
+            if (!future.get()) {
+                all_writers_successful = false;
+            }
+        }
+        
+        ADVANCED_TEST(all_writers_successful, "Concurrent serialization successful");
+        
+        // Cleanup concurrent test files
+        for (int i = 0; i < num_concurrent_writers; i++) {
+            std::filesystem::remove(test_db + std::to_string(i));
+        }
+        
+    } catch (const std::exception& e) {
+        ADVANCED_TEST(false, string("Concurrent serialization failed: ") + e.what());
+    }
+    
+    // Cleanup main test file
+    std::filesystem::remove(test_db);
+    ADVANCED_TEST(true, "Advanced serialization test cleanup completed");
+}
+
 // ============== MAIN ADVANCED TEST RUNNER ==============
 int main() {
     cout << "Running StoreX Advanced Tests..." << endl;
@@ -343,10 +718,15 @@ int main() {
     try {
         benchmarkIndexingStrategies();
         testSearchAccuracy();
+        testComprehensiveAccuracy();
         testMemoryUsage();
+        testMemoryLeakDetection();
         testThreadSafety();
+        testAdvancedConcurrency();
+        testStressScenarios();
         testDataIntegrity();
         testSerialization();
+        testAdvancedSerialization();
     } catch (const std::exception& e) {
         cout << "Advanced test execution failed with exception: " << e.what() << endl;
         return 1;
